@@ -6,3 +6,8 @@ but you'd need a working GWBASIC/BASICA to see the source.
 This is mostly a toy program that I'm using to help get familiar with
 golang, but it might be useful to someone.
 
+## Referece
+
+The documentation I used for the tokenized file format was
+here: [http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html](http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html).
+
