@@ -134,6 +134,9 @@ func get_next_tokstr(in byteDripper) (ans string) {
 func cat(in byteDripper) {
 	for {
 		line, err := read_lineno(in)
+		if err == io.EOF {
+			break
+		}
 		if err != nil {
 			fmt.Printf("\nERROR %s\n", err.Error())
 			break
