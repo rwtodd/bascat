@@ -78,8 +78,27 @@ func read_lineno(in byteDripper) (uint16, error) {
 	return read_uint16(in)
 }
 
-func lookup_token(tok byte) string {
-	return fmt.Sprintf("<TOKEN %02x>", tok)
+func lookup_token(prefix byte, tok byte) string {
+	var ans string
+	var ok bool
+	var lookup map[byte]string
+
+	switch prefix {
+	case 0x00:
+		lookup = opcodes
+	case 0xfd:
+		lookup = opcodes_fd
+	case 0xfe:
+		lookup = opcodes_fe
+	case 0xff:
+		lookup = opcodes_ff
+	}
+
+	ans, ok = lookup[tok]
+	if !ok {
+		ans = fmt.Sprintf("<TOKEN %02x%02x>", prefix, tok)
+	}
+	return ans
 }
 
 func get_next_tokstr(in byteDripper) (ans string) {
@@ -122,10 +141,13 @@ func get_next_tokstr(in byteDripper) (ans string) {
 		in.ReadByte()
 		in.ReadByte()
 		ans = "<FNUMBER_8>"
+	case 0xfd, 0xfe, 0xff:
+		second, _ := in.ReadByte()
+		ans = lookup_token(tok, second)
 	case end_of_line:
 		// do nothing
 	default:
-		ans = lookup_token(tok)
+		ans = lookup_token(0, tok)
 	}
 
 	return
