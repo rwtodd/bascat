@@ -53,6 +53,17 @@ func decoder(in byteDripper) (bd byteDripper, err error) {
 	return
 }
 
+func read_int16(in byteDripper) (out int16, err error) {
+	b1, err := in.ReadByte()
+	b2, err2 := in.ReadByte()
+
+	out = (int16(b2) << 8) | int16(b1)
+	if err == nil {
+		err = err2
+	}
+	return
+}
+
 func read_uint16(in byteDripper) (out uint16, err error) {
 	b1, err := in.ReadByte()
 	b2, err2 := in.ReadByte()
@@ -118,13 +129,15 @@ func get_next_tokstr(in byteDripper) (ans string) {
 
 	// it might require more bytes read
 	switch tok {
-	case lnumber_prefix, octal_prefix, hex_prefix, int_prefix_2b:
-		in.ReadByte()
-		in.ReadByte()
-		ans = "<NUMBER>"
+	case lnumber_prefix:
+		lnum, _ := read_uint16(in)
+		ans = strconv.Itoa(int(lnum))
+	case octal_prefix, hex_prefix, int_prefix_2b:
+		snum, _ := read_int16(in)
+		ans = strconv.Itoa(int(snum))
 	case int_prefix_1b:
-		in.ReadByte()
-		ans = "<NUMBER>"
+		bnum, _ := in.ReadByte()
+		ans = strconv.Itoa(int(bnum))
 	case float_prefix_4b:
 		in.ReadByte()
 		in.ReadByte()
@@ -192,4 +205,5 @@ func main() {
 	}
 
 	cat(input)
+
 }
