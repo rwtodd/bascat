@@ -53,28 +53,6 @@ func decoder(in byteDripper) (bd byteDripper, err error) {
 	return
 }
 
-func read_int16(in byteDripper) (out int16, err error) {
-	b1, err := in.ReadByte()
-	b2, err2 := in.ReadByte()
-
-	out = (int16(b2) << 8) | int16(b1)
-	if err == nil {
-		err = err2
-	}
-	return
-}
-
-func read_uint16(in byteDripper) (out uint16, err error) {
-	b1, err := in.ReadByte()
-	b2, err2 := in.ReadByte()
-
-	out = (uint16(b2) << 8) | uint16(b1)
-	if err == nil {
-		err = err2
-	}
-	return
-}
-
 func read_lineno(in byteDripper) (uint16, error) {
 	// check the "next line" pointer for 0, return EOF if
 	// we find it.
@@ -87,29 +65,6 @@ func read_lineno(in byteDripper) (uint16, error) {
 
 	// return the line number...
 	return read_uint16(in)
-}
-
-func lookup_token(prefix byte, tok byte) string {
-	var ans string
-	var ok bool
-	var lookup map[byte]string
-
-	switch prefix {
-	case 0x00:
-		lookup = opcodes
-	case 0xfd:
-		lookup = opcodes_fd
-	case 0xfe:
-		lookup = opcodes_fe
-	case 0xff:
-		lookup = opcodes_ff
-	}
-
-	ans, ok = lookup[tok]
-	if !ok {
-		ans = fmt.Sprintf("<TOKEN %02x%02x>", prefix, tok)
-	}
-	return ans
 }
 
 func get_next_tokstr(in byteDripper) (ans string) {
@@ -132,35 +87,31 @@ func get_next_tokstr(in byteDripper) (ans string) {
 	case lnumber_prefix:
 		lnum, _ := read_uint16(in)
 		ans = strconv.Itoa(int(lnum))
-	case octal_prefix, hex_prefix, int_prefix_2b:
+	case octal_prefix:
+		snum, _ := read_int16(in)
+		ans = "&O" + strconv.FormatInt(int64(snum), 8)
+	case hex_prefix:
+		snum, _ := read_int16(in)
+		ans = "&H" + strconv.FormatInt(int64(snum), 16)
+	case int_prefix_2b:
 		snum, _ := read_int16(in)
 		ans = strconv.Itoa(int(snum))
 	case int_prefix_1b:
 		bnum, _ := in.ReadByte()
 		ans = strconv.Itoa(int(bnum))
 	case float_prefix_4b:
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		ans = "<FNUMBER_4>"
+		fnum, _ := read_f32(in)
+		ans = strconv.FormatFloat(float64(fnum), 'E', -1, 32)
 	case float_prefix_8b:
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		in.ReadByte()
-		ans = "<FNUMBER_8>"
+		fnum, _ := read_f64(in)
+		ans = strconv.FormatFloat(fnum, 'E', -1, 64)
 	case 0xfd, 0xfe, 0xff:
 		second, _ := in.ReadByte()
-		ans = lookup_token(tok, second)
+		ans = lookup_token((uint16(tok) << 8) | uint16(second))
 	case end_of_line:
 		// do nothing
 	default:
-		ans = lookup_token(0, tok)
+		ans = lookup_token(uint16(tok))
 	}
 
 	return
