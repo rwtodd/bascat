@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
-	"strings"
 )
 
 const (
@@ -67,18 +65,18 @@ func read_lineno(in byteDripper) (uint16, error) {
 	return read_uint16(in)
 }
 
-func get_next_tokstr(in byteDripper) (ans string) {
+func get_next_tok(in byteDripper) (ans token) {
 	tok, _ := in.ReadByte()
 
 	// it might represent itself
 	if tok >= 0x20 && tok <= 0x7E {
-		ans = string(tok)
+		ans = literalToken(tok)
 		return
 	}
 
 	// it might be a hard-coded low number
 	if tok >= first_ten && tok <= last_ten {
-		ans = strconv.Itoa(int(tok) - first_ten)
+		ans = numToken{(int64(tok) - first_ten), 10}
 		return
 	}
 
@@ -86,35 +84,73 @@ func get_next_tokstr(in byteDripper) (ans string) {
 	switch tok {
 	case lnumber_prefix:
 		lnum, _ := read_uint16(in)
-		ans = strconv.Itoa(int(lnum))
+		ans = numToken{int64(lnum), 10}
 	case octal_prefix:
 		snum, _ := read_int16(in)
-		ans = "&O" + strconv.FormatInt(int64(snum), 8)
+		ans = numToken{int64(snum), 8}
 	case hex_prefix:
 		snum, _ := read_int16(in)
-		ans = "&H" + strconv.FormatInt(int64(snum), 16)
+		ans = numToken{int64(snum), 16}
 	case int_prefix_2b:
 		snum, _ := read_int16(in)
-		ans = strconv.Itoa(int(snum))
+		ans = numToken{int64(snum), 10}
 	case int_prefix_1b:
 		bnum, _ := in.ReadByte()
-		ans = strconv.Itoa(int(bnum))
+		ans = numToken{int64(bnum), 10}
 	case float_prefix_4b:
 		fnum, _ := read_f32(in)
-		ans = strconv.FormatFloat(float64(fnum), 'E', -1, 32)
+		ans = fnumToken{fnum, 32}
 	case float_prefix_8b:
 		fnum, _ := read_f64(in)
-		ans = strconv.FormatFloat(fnum, 'E', -1, 64)
+		ans = fnumToken{fnum, 64}
 	case 0xfd, 0xfe, 0xff:
 		second, _ := in.ReadByte()
-		ans = lookup_token((uint16(tok) << 8) | uint16(second))
+		ans = opcodeToken((uint16(tok) << 8) | uint16(second))
 	case end_of_line:
-		// do nothing
+		ans = nil
 	default:
-		ans = lookup_token(uint16(tok))
+		ans = opcodeToken(uint16(tok))
 	}
 
 	return
+}
+
+// filter the tokens based on a few patterns:
+// 3A A1     --> A1   ":ELSE"  --> "ELSE"
+// 3A 8F D9  --> D9   ":REM'"  --> "'"
+// B1 E9     --> B1   "WHILE+" --> "WHILE"
+func output_filtered(toks []token) {
+
+	ln := len(toks)
+	var skip int
+
+	for idx, val := range toks {
+		if skip == 0 {
+			//fmt.Print(val.opcode())
+			switch val.opcode() {
+			case 0x3A:
+				if ((idx + 1) < ln) && (toks[idx+1].opcode() == 0xA1) {
+					// do nothing
+				} else if ((idx + 2) < ln) && (toks[idx+1].opcode() == 0x8F) && (toks[idx+2].opcode() == 0xD9) {
+					skip = 1
+				} else {
+					fmt.Print(val)
+				}
+			case 0xB1:
+				if ((idx + 1) < ln) && (toks[idx+1].opcode() == 0xE9) {
+					skip = 1
+					fmt.Print(val)
+				}
+			default:
+				fmt.Print(val)
+			}
+		} else {
+			skip = skip - 1
+		}
+
+	}
+
+	fmt.Println("")
 }
 
 func cat(in byteDripper) {
@@ -128,16 +164,15 @@ func cat(in byteDripper) {
 			break
 		}
 
-		var tok = strconv.FormatUint(uint64(line), 10)
-		var toks = []string{tok}
-		tok = "  "
-		for tok != "" {
+		var tok token = numToken{int64(line), 10}
+		var toks = append(make([]token, 0, 20), tok)
+		tok = literalToken("  ")
+		for tok != nil {
 			toks = append(toks, tok)
-			tok = get_next_tokstr(in)
+			tok = get_next_tok(in)
 		}
 
-		fmt.Printf("%s\n", strings.Join(toks, ""))
-
+		output_filtered(toks)
 	}
 }
 

@@ -35,7 +35,7 @@ func read_uint16(in byteDripper) (out uint16, err error) {
 	return
 }
 
-func read_f32(in byteDripper) (out float32, err error) {
+func read_f32(in byteDripper) (out float64, err error) {
 	var bs [4]byte
 	bslice := bs[:]
 
@@ -48,7 +48,9 @@ func read_f32(in byteDripper) (out float32, err error) {
 		exp := bs[3] - 2
 		bs[3] = sign | (exp >> 1)
 		bs[2] = (exp << 7) | (bs[2] & 0x7F)
-		binary.Read(bytes.NewBuffer(bslice), binary.LittleEndian, &out)
+		var f32 float32
+		binary.Read(bytes.NewBuffer(bslice), binary.LittleEndian, &f32)
+		out = float64(f32)
 	}
 	return
 }
