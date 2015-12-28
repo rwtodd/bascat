@@ -10,7 +10,6 @@ import (
 const (
 	first_byte  = 0xFF // first byte of the file (unencrypted)
 	first_bcrpt = 0xFE // first byte of the file (encrypted)
-	last_byte   = 0x1A // last byte of the file
 
 	end_of_program = 0 // indicates there are no more lines
 	end_of_line    = 0 // indicates the end of a line
@@ -27,8 +26,6 @@ const (
 	float_prefix_4b = 0x1D // four-byte int prefix
 	float_prefix_8b = 0x1F // eight-byte float prefix
 
-	unused_const    = 0x10 // if we see these tokens, it's an error
-	unused_const2   = 0x1E // if we see these tokens, it's an error
 	lpointer_prefix = 0x0D // line pointer, we should NEVER see this
 )
 
