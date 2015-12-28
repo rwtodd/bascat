@@ -42,8 +42,7 @@ func decoder(in byteDripper) (bd byteDripper, err error) {
 	case first_bcrpt:
 		bd = in // FIXME make a decryptor
 	default:
-		fmt.Printf("This file is not a tokenized BAS file!")
-
+		err = fmt.Errorf("This file is not a tokenized BAS file! First byte: <%02x>", b)
 	}
 	return
 }
@@ -184,6 +183,7 @@ func main() {
 	br := bufio.NewReader(infl)
 	input, err := decoder(br)
 	if err != nil {
+		fmt.Println(err)
 		return
 	}
 
