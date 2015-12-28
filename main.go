@@ -40,7 +40,7 @@ func decoder(in byteDripper) (bd byteDripper, err error) {
 	case first_byte:
 		bd = in
 	case first_bcrpt:
-		bd = in // FIXME make a decryptor
+		bd = &unprotector{src: in}
 	default:
 		err = fmt.Errorf("This file is not a tokenized BAS file! First byte: <%02x>", b)
 	}
