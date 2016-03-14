@@ -10,7 +10,7 @@ golang, but it might be useful to someone.
 
 You should be able to install this utility with:
 
-    go get github.com/waywardcode/bascat
+    go get go.waywardcode.com/bascat
 
 
 ## Unprotect Feature
