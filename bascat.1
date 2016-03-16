@@ -1,38 +1,48 @@
 .TH bascat "1" "15 March 2016" "" "Utility"
-
 .SH NAME
-bascat -- decode binary GW\-BASIC files
-
+bascat -- decode binary 
+.SM "GW\-BASIC"
+files
+.\"
+.\"
 .SH SYNOPSIS
-\fBbascat\fR [\fIfile\fR]
-
+.B bascat
+.RI [ file ]
+.\"
+.\"
 .SH DESCRIPTION
 bascat reads 
-.B ".BAS"
+.I ".BAS"
 files saved in the default binary format by 
-GW-BASIC and BASICA, outputting plain text. This 
+.SM "GW\-BASIC" 
+and 
+.SM "BASICA,"
+outputting plain text. This 
 allows the code to be studied or ported without 
 needing to run the interpreters in a virtual machine.
 .PP
 The command will run on a single file given on the 
 command line, or as a filter if no filename is 
 given.
-
+.\"
+.\"
 .SH BUGS
 The program will attempt to decode an encrypted
 file via an algorithm I found in the
-.B "PC-BASIC"
+.SM "PC\-BASIC"
 project.  However, I don't have any protected
-.B ".BAS"
+.I ".BAS"
 files, so I have not tested that code.
-
+.\"
+.\"
 .SH SEE ALSO 
-.nf
-.B "PC-BASIC"
-: http://sourceforge.net/p/pcbasic/wiki/Home/
-.B "BAS Format"
-: http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html
-.fi
-
+.TP
+PC-BASIC
+http://sourceforge.net/p/pcbasic/wiki/Home/
+.TP 
+BAS Format
+http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html
+.\"
+.\"
 .SH AUTHOR
 Richard Todd (richard@waywardcode.com)
