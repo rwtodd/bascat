@@ -155,7 +155,7 @@ func cat(in byteReader) {
 		}
 		if err != nil {
 			fmt.Printf("\nERROR %s\n", err.Error())
-			break
+			os.Exit(1)
 		}
 
 		var tok *token = numToken(int64(line), 10)
@@ -171,12 +171,23 @@ func cat(in byteReader) {
 }
 
 func main() {
-	infl, err := os.Open(os.Args[1])
-	if err != nil {
-		fmt.Printf("Can't open <%s>!: %s\n", os.Args[1], err.Error())
-		return
+	var infl *os.File
+
+	switch len(os.Args) {
+	case 1:
+		infl = os.Stdin
+	case 2:
+                var err error
+		infl, err = os.Open(os.Args[1])
+		if err != nil {
+			fmt.Printf("Can't open <%s>!: %s\n", os.Args[1], err.Error())
+			os.Exit(1)
+		}
+		defer infl.Close()
+	default:
+		fmt.Fprintf(os.Stderr, "Usage: bascat [file]\n")
+		os.Exit(2)
 	}
-	defer infl.Close()
 
 	br := bufio.NewReader(infl)
 	input, err := decoder(br.ReadByte)
@@ -186,5 +197,4 @@ func main() {
 	}
 
 	cat(input)
-
 }
