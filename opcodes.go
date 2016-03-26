@@ -8,70 +8,46 @@ import (
 // opcodes (tokens) in tokenized basic files
 
 // ****************************************************
-type token interface {
-	fmt.Stringer
-	opcode() uint16
+type token struct {
+	str    string
+	opcode uint16
 }
 
 // ****************************************************
 // Opcode tokens can be looked up in a map...
 
-type opcodeToken uint16
-
-func (ot opcodeToken) String() string {
-	ans, ok := opcodes[uint16(ot)]
+func opcodeToken(opcode uint16) *token {
+	ans, ok := opcodes[opcode]
 	if !ok {
-		ans = fmt.Sprintf("<TOKEN %04x>", uint16(ot))
+		ans = fmt.Sprintf("<TOKEN %04x>", opcode)
 	}
-	return ans
-}
-
-func (ot opcodeToken) opcode() uint16 {
-	return uint16(ot)
+	return &token{ans, opcode}
 }
 
 // ****************************************************
 // literal tokens are just strings
-type literalToken string
-
-func (lt literalToken) String() string {
-	return string(lt)
+func literalToken(str string) *token {
+	return &token{str, uint16(str[0])}
 }
-
-func (lt literalToken) opcode() uint16 { return uint16(string(lt)[0]) }
 
 // ****************************************************
 // num tokens display a number in a given base...
-type numToken struct {
-	num  int64
-	base int
-}
-
-func (nt numToken) String() string {
+func numToken(num int64, base int) *token {
 	var prefix string
-	switch nt.base {
+	switch base {
 	case 8:
 		prefix = "&O"
 	case 16:
 		prefix = "&H"
 	}
-	return prefix + strconv.FormatInt(nt.num, nt.base)
+	return &token{prefix + strconv.FormatInt(num, base), 0}
 }
-
-func (_ numToken) opcode() uint16 { return 0 }
 
 // ****************************************************
 // fnum tokens display a floating-point number
-type fnumToken struct {
-	num  float64
-	prec int
+func fnumToken(num float64, prec int) *token {
+	return &token{strconv.FormatFloat(num, 'E', -1, prec), 0}
 }
-
-func (nt fnumToken) String() string {
-	return strconv.FormatFloat(nt.num, 'E', -1, nt.prec)
-}
-
-func (_ fnumToken) opcode() uint16 { return 0 }
 
 // Opcodes are mapped from uint16 because some of them are
 // 2-bytes, so we use two bytes for all the lookups

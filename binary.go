@@ -7,9 +7,9 @@ import (
 
 // functions to read binary formats from byteDrippers
 
-func fill_array(in byteDripper, bs []byte) (err error) {
+func fill_array(in byteReader, bs []byte) (err error) {
 	for i := range bs {
-		bs[i], err = in.ReadByte()
+		bs[i], err = in()
 		if err != nil {
 			break
 		}
@@ -17,7 +17,7 @@ func fill_array(in byteDripper, bs []byte) (err error) {
 	return
 }
 
-func read_int16(in byteDripper) (out int16, err error) {
+func read_int16(in byteReader) (out int16, err error) {
 	var bs [2]byte
 	bslice := bs[:]
 
@@ -26,7 +26,7 @@ func read_int16(in byteDripper) (out int16, err error) {
 	return
 }
 
-func read_uint16(in byteDripper) (out uint16, err error) {
+func read_uint16(in byteReader) (out uint16, err error) {
 	var bs [2]byte
 	bslice := bs[:]
 
@@ -35,7 +35,7 @@ func read_uint16(in byteDripper) (out uint16, err error) {
 	return
 }
 
-func read_f32(in byteDripper) (out float64, err error) {
+func read_f32(in byteReader) (out float64, err error) {
 	var bs [4]byte
 	bslice := bs[:]
 
@@ -55,7 +55,7 @@ func read_f32(in byteDripper) (out float64, err error) {
 	return
 }
 
-func read_f64(in byteDripper) (out float64, err error) {
+func read_f64(in byteReader) (out float64, err error) {
 	var bs [8]byte
 	bslice := bs[:]
 
