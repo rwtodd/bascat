@@ -13,7 +13,7 @@ object Token {
   def fromLiteral(ch: Int) = new Token(ch,ch.toChar.toString)
 
   def fromNumber(num: Long, base: Int) = 
-     new Token(0, 
+     new Token(-1, 
                base match {
                  case  8 => "&O%o".format(num)
                  case 16 => "&H%X".format(num)
@@ -21,12 +21,13 @@ object Token {
                }) 
 
   def fromFloat(num: Double) =
-     new Token(0, "%G".format(num))
+     new Token(-1, "%G".format(num))
 
   /** opcodes represents the BASIC tokens which are shorthand
     * for keywords. 
     */
   private val opcodes = Map[Int,String]( 
+        0x00 ->   "EOL",
 	0x81 ->   "END",
 	0x82 ->   "FOR",
 	0x83 ->   "NEXT",
