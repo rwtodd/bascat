@@ -1,3 +1,6 @@
+// copyright 2016 Richard Todd.
+// License is GPL... see the LICENSE file in the repository.
+
 package rwt.bascat
 
 sealed case class Token(op: Int, str: String)
