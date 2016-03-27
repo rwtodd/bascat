@@ -1,13 +1,28 @@
 package rwt.bascat
 
-/** Opcodes represents the BASIC tokens which are shorthand
-  * for keywords. It provides a simple interface to look them
-  * up.
-  */
-object Opcodes {
-  def apply(idx: Int): String = 
-     opcodes.getOrElse(idx, s"<Token: $idx>")
-  
+sealed case class Token(op: Int, str: String)
+
+object Token {
+  def fromOpcode(op: Int) = 
+     new Token(op, opcodes.getOrElse(op, s"<Token: $op>"))
+
+  def fromLiteral(str: String) = new Token(str(0),str)
+  def fromLiteral(ch: Int) = new Token(ch,ch.toChar.toString)
+
+  def fromNumber(num: Long, base: Int) = 
+     new Token(0, 
+               base match {
+                 case  8 => "&O%o".format(num)
+                 case 16 => "&H%X".format(num)
+                 case  _ => num.toString()
+               }) 
+
+  def fromFloat(num: Double) =
+     new Token(0, "%G".format(num))
+
+  /** opcodes represents the BASIC tokens which are shorthand
+    * for keywords. 
+    */
   private val opcodes = Map[Int,String]( 
 	0x81 ->   "END",
 	0x82 ->   "FOR",
@@ -195,3 +210,4 @@ object Opcodes {
 	0xFFA5 -> "LOF"
   )
 }
+
