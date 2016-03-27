@@ -1,10 +1,16 @@
 # bascat
-This is a golang program to print out tokenized gwbasic .BAS files in ASCII.  There are 
+
+bascat is a program to print out tokenized gwbasic .BAS files in ASCII.  There are 
 actually a fair amount of .BAS files out there in the default tokenized format, 
 but you'd need a working GWBASIC/BASICA to see the source.
 
 This is mostly a toy program that I'm using to help get familiar with
-golang, but it might be useful to someone.
+Go, but it might be useful to someone.  
+
+## Scala Version
+
+_edit 2016-03:_ I made a scala version, also in this repository, to compare the 
+results.
 
 ## Go Get
 
