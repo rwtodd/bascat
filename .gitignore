@@ -7,6 +7,10 @@
 _obj
 _test
 
+#scala version
+scala_version/project
+scala_version/target
+
 # Architecture specific extensions/prefixes
 *.[568vq]
 [568vq].out

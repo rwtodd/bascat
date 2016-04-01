@@ -7,10 +7,13 @@ but you'd need a working GWBASIC/BASICA to see the source.
 This is mostly a toy program that I'm using to help get familiar with
 Go, but it might be useful to someone.  
 
-## Scala Version
+## Multiple Languages
 
-_edit 2016-03:_ I made a scala version, also in this repository, to compare the 
-results.
+The original version I did was in Go.  But, in March 2016 I 
+created a Scala version and an F# version.  Of the three,
+I think the F# version came out the cleanest.  It's a really
+nice language!  Anyway, all three are in this repo available
+for comparison.
 
 ## Go Get
 
