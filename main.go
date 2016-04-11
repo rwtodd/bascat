@@ -114,36 +114,30 @@ func get_next_tok(in byteReader) (ans *token) {
 // 3A A1     --> A1   ":ELSE"  --> "ELSE"
 // 3A 8F D9  --> D9   ":REM'"  --> "'"
 // B1 E9     --> B1   "WHILE+" --> "WHILE"
-func output_filtered(toks []*token) {
-
+func unfold(toks []*token) (string, []*token) {
 	ln := len(toks)
-	var skip int
 
-	for idx, val := range toks {
-		if skip == 0 {
-			switch val.opcode {
-			case 0x3A:
-				if ((idx + 1) < ln) && (toks[idx+1].opcode == 0xA1) {
-					// do nothing
-				} else if ((idx + 2) < ln) && (toks[idx+1].opcode == 0x8F) && (toks[idx+2].opcode == 0xD9) {
-					skip = 1
-				} else {
-					fmt.Print(val.str)
-				}
-			case 0xB1:
-				if ((idx + 1) < ln) && (toks[idx+1].opcode == 0xE9) {
-					skip = 1
-					fmt.Print(val.str)
-				}
-			default:
-				fmt.Print(val.str)
-			}
-		} else {
-			skip = skip - 1
+	switch toks[0].opcode {
+	case 0x3A:
+		if ln >= 2 && toks[1].opcode == 0xA1 {
+			return "ELSE", toks[2:]
+		} else if ln >= 3 && toks[1].opcode == 0x8F && toks[2].opcode == 0xD9 {
+			return "'", toks[3:]
 		}
-
+	case 0xB1:
+		if ln >= 2 && toks[1].opcode == 0xE9 {
+			return "WHILE", toks[2:]
+		}
 	}
+	return toks[0].str, toks[1:]
+}
 
+func output_filtered(toks []*token) {
+	for len(toks) > 0 {
+		var nxt string
+		nxt, toks = unfold(toks)
+		fmt.Print(nxt)
+	}
 	fmt.Println("")
 }
 
@@ -177,7 +171,7 @@ func main() {
 	case 1:
 		infl = os.Stdin
 	case 2:
-                var err error
+		var err error
 		infl, err = os.Open(os.Args[1])
 		if err != nil {
 			fmt.Printf("Can't open <%s>!: %s\n", os.Args[1], err.Error())
