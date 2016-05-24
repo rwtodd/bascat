@@ -10,7 +10,7 @@ Go, but it might be useful to someone.
 ## Multiple Languages
 
 The original version I did was in Go.  But, in March 2016 I 
-created a Scala version and an F# version.  Of the three,
+created a Scala version and an F# version.  Then in May 2016 I did a java port.  Of them all,
 I think the F# version came out the cleanest.  It's a really
 nice language!  Anyway, all three are in this repo available
 for comparison.
