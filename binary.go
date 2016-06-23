@@ -1,4 +1,4 @@
-package main // import "go.waywardcode.com/bascat"
+package main 
 
 import (
 	"bytes"

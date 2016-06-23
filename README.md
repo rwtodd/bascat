@@ -19,7 +19,7 @@ for comparison.
 
 You should be able to install this utility with:
 
-    go get go.waywardcode.com/bascat
+    go get github.com/rwtodd/bascat
 
 
 ## Unprotect Feature
