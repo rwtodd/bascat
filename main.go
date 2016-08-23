@@ -45,10 +45,10 @@ func decoder(in io.ByteReader) (bd io.ByteReader, err error) {
 	return
 }
 
-func read_lineno(in io.ByteReader) (uint16, error) {
+func readLineNum(in io.ByteReader) (uint16, error) {
 	// check the "next line" pointer for 0, return EOF if
 	// we find it.
-	ptr, err := read_uint16(in)
+	ptr, err := readUint16(in)
 	if ptr == 0 {
 		return ptr, io.EOF
 	} else if err != nil {
@@ -56,10 +56,10 @@ func read_lineno(in io.ByteReader) (uint16, error) {
 	}
 
 	// return the line number...
-	return read_uint16(in)
+	return readUint16(in)
 }
 
-func get_next_tok(in io.ByteReader) (ans *token) {
+func nextToken(in io.ByteReader) (ans *token) {
 	tok, _ := in.ReadByte()
 
 	// it might represent itself
@@ -77,25 +77,25 @@ func get_next_tok(in io.ByteReader) (ans *token) {
 	// it might require more bytes read
 	switch tok {
 	case lnumber_prefix:
-		lnum, _ := read_uint16(in)
+		lnum, _ := readUint16(in)
 		ans = numToken(int64(lnum), 10)
 	case octal_prefix:
-		snum, _ := read_int16(in)
+		snum, _ := readInt16(in)
 		ans = numToken(int64(snum), 8)
 	case hex_prefix:
-		snum, _ := read_int16(in)
+		snum, _ := readInt16(in)
 		ans = numToken(int64(snum), 16)
 	case int_prefix_2b:
-		snum, _ := read_int16(in)
+		snum, _ := readInt16(in)
 		ans = numToken(int64(snum), 10)
 	case int_prefix_1b:
 		bnum, _ := in.ReadByte()
 		ans = numToken(int64(bnum), 10)
 	case float_prefix_4b:
-		fnum, _ := read_f32(in)
+		fnum, _ := readF32(in)
 		ans = fnumToken(fnum, 32)
 	case float_prefix_8b:
-		fnum, _ := read_f64(in)
+		fnum, _ := readF64(in)
 		ans = fnumToken(fnum, 64)
 	case 0xfd, 0xfe, 0xff:
 		second, _ := in.ReadByte()
@@ -131,7 +131,7 @@ func unfold(toks []*token) (string, []*token) {
 	return toks[0].str, toks[1:]
 }
 
-func output_filtered(toks []*token) {
+func outputFiltered(toks []*token) {
 	for len(toks) > 0 {
 		var nxt string
 		nxt, toks = unfold(toks)
@@ -142,7 +142,7 @@ func output_filtered(toks []*token) {
 
 func cat(in io.ByteReader) {
 	for {
-		line, err := read_lineno(in)
+		line, err := readLineNum(in)
 		if err == io.EOF {
 			break
 		}
@@ -156,10 +156,10 @@ func cat(in io.ByteReader) {
 		tok = literalToken("  ")
 		for tok != nil {
 			toks = append(toks, tok)
-			tok = get_next_tok(in)
+			tok = nextToken(in)
 		}
 
-		output_filtered(toks)
+		outputFiltered(toks)
 	}
 }
 
