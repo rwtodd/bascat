@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/rwtodd/apputil-go/errs"
 )
 
 const (
@@ -25,28 +27,25 @@ const (
 
 	float_prefix_4b = 0x1D // four-byte int prefix
 	float_prefix_8b = 0x1F // eight-byte float prefix
-
-	lpointer_prefix = 0x0D // line pointer, we should NEVER see this
 )
 
-type byteReader func() (byte, error)
-
-func decoder(in byteReader) (bd byteReader, err error) {
+func decoder(in io.ByteReader) (bd io.ByteReader, err error) {
 	// check the first byte
-	b, err := in()
+	b, err := in.ReadByte()
 	switch b {
 	case first_byte:
 		bd = in
 	case first_bcrpt:
-		unp := &unprotector{src: in}
-		bd = unp.ReadByte
+		bd = &unprotector{src: in}
 	default:
-		err = fmt.Errorf("This file is not a tokenized BAS file! First byte: <%02x>", b)
+		err = errs.First("Decoding",
+			err,
+			fmt.Errorf("This file is not a tokenized BAS file! First byte: <%02x>", b))
 	}
 	return
 }
 
-func read_lineno(in byteReader) (uint16, error) {
+func read_lineno(in io.ByteReader) (uint16, error) {
 	// check the "next line" pointer for 0, return EOF if
 	// we find it.
 	ptr, err := read_uint16(in)
@@ -60,8 +59,8 @@ func read_lineno(in byteReader) (uint16, error) {
 	return read_uint16(in)
 }
 
-func get_next_tok(in byteReader) (ans *token) {
-	tok, _ := in()
+func get_next_tok(in io.ByteReader) (ans *token) {
+	tok, _ := in.ReadByte()
 
 	// it might represent itself
 	if tok >= 0x20 && tok <= 0x7E {
@@ -90,7 +89,7 @@ func get_next_tok(in byteReader) (ans *token) {
 		snum, _ := read_int16(in)
 		ans = numToken(int64(snum), 10)
 	case int_prefix_1b:
-		bnum, _ := in()
+		bnum, _ := in.ReadByte()
 		ans = numToken(int64(bnum), 10)
 	case float_prefix_4b:
 		fnum, _ := read_f32(in)
@@ -99,7 +98,7 @@ func get_next_tok(in byteReader) (ans *token) {
 		fnum, _ := read_f64(in)
 		ans = fnumToken(fnum, 64)
 	case 0xfd, 0xfe, 0xff:
-		second, _ := in()
+		second, _ := in.ReadByte()
 		ans = opcodeToken((uint16(tok) << 8) | uint16(second))
 	case end_of_line:
 		ans = nil
@@ -141,7 +140,7 @@ func output_filtered(toks []*token) {
 	fmt.Println("")
 }
 
-func cat(in byteReader) {
+func cat(in io.ByteReader) {
 	for {
 		line, err := read_lineno(in)
 		if err == io.EOF {
@@ -184,7 +183,7 @@ func main() {
 	}
 
 	br := bufio.NewReader(infl)
-	input, err := decoder(br.ReadByte)
+	input, err := decoder(br)
 	if err != nil {
 		fmt.Println(err)
 		return
