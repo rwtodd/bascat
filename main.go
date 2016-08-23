@@ -29,6 +29,7 @@ const (
 	float_prefix_8b = 0x1F // eight-byte float prefix
 )
 
+// decoder decides whether to use the 'unprotect' decryption or not.
 func decoder(in io.ByteReader) (bd io.ByteReader, err error) {
 	// check the first byte
 	b, err := in.ReadByte()
@@ -45,6 +46,8 @@ func decoder(in io.ByteReader) (bd io.ByteReader, err error) {
 	return
 }
 
+// readLineNum reads the next line number from the stream. It
+// detects EOF via a "next line pointer" of 0.
 func readLineNum(in io.ByteReader) (uint16, error) {
 	// check the "next line" pointer for 0, return EOF if
 	// we find it.
@@ -59,6 +62,7 @@ func readLineNum(in io.ByteReader) (uint16, error) {
 	return readUint16(in)
 }
 
+// nextToken decodes the next token from the input.
 func nextToken(in io.ByteReader) (ans *token) {
 	tok, _ := in.ReadByte()
 
@@ -109,37 +113,41 @@ func nextToken(in io.ByteReader) (ans *token) {
 	return
 }
 
-// filter the tokens based on a few patterns:
+// outputFiltered filters the tokens based on a few patterns:
 // 3A A1     --> A1   ":ELSE"  --> "ELSE"
 // 3A 8F D9  --> D9   ":REM'"  --> "'"
 // B1 E9     --> B1   "WHILE+" --> "WHILE"
-func unfold(toks []*token) (string, []*token) {
-	ln := len(toks)
-
-	switch toks[0].opcode {
-	case 0x3A:
-		if ln >= 2 && toks[1].opcode == 0xA1 {
-			return "ELSE", toks[2:]
-		} else if ln >= 3 && toks[1].opcode == 0x8F && toks[2].opcode == 0xD9 {
-			return "'", toks[3:]
-		}
-	case 0xB1:
-		if ln >= 2 && toks[1].opcode == 0xE9 {
-			return "WHILE", toks[2:]
-		}
-	}
-	return toks[0].str, toks[1:]
-}
-
 func outputFiltered(toks []*token) {
-	for len(toks) > 0 {
-		var nxt string
-		nxt, toks = unfold(toks)
-		fmt.Print(nxt)
+	ln := len(toks)
+	idx := 0
+	
+	for idx < ln {
+		remaining := ln - idx
+
+		switch toks[idx].opcode {
+		case 0x3A:
+			if remaining >= 2 && toks[idx+1].opcode == 0xA1 {
+				idx++
+			} else if remaining >= 3 && toks[idx+1].opcode == 0x8F && toks[idx+2].opcode == 0xD9 {
+				idx += 2
+			} 
+		case 0xB1:
+			if remaining >= 2 && toks[idx+1].opcode == 0xE9 {
+				toks[idx+1] = toks[idx]
+				idx++
+			}
+		}
+
+		fmt.Print(toks[idx].str)
+		idx++
 	}
+
 	fmt.Println("")
 }
 
+// cat is the high-level driver of the program (named after the
+// UNIX tool.  It pulls in a line of tokens at a time, and sends
+// them to be output.
 func cat(in io.ByteReader) {
 	for {
 		line, err := readLineNum(in)
