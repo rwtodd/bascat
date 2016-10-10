@@ -1,15 +1,16 @@
-package main 
+package main
 
 import (
 	"bytes"
 	"encoding/binary"
+	"io"
 )
 
 // functions to read binary formats from byteDrippers
 
-func fill_array(in byteReader, bs []byte) (err error) {
+func fillArray(in io.ByteReader, bs []byte) (err error) {
 	for i := range bs {
-		bs[i], err = in()
+		bs[i], err = in.ReadByte()
 		if err != nil {
 			break
 		}
@@ -17,29 +18,29 @@ func fill_array(in byteReader, bs []byte) (err error) {
 	return
 }
 
-func read_int16(in byteReader) (out int16, err error) {
+func readInt16(in io.ByteReader) (out int16, err error) {
 	var bs [2]byte
 	bslice := bs[:]
 
-	err = fill_array(in, bslice)
+	err = fillArray(in, bslice)
 	binary.Read(bytes.NewBuffer(bslice), binary.LittleEndian, &out)
 	return
 }
 
-func read_uint16(in byteReader) (out uint16, err error) {
+func readUint16(in io.ByteReader) (out uint16, err error) {
 	var bs [2]byte
 	bslice := bs[:]
 
-	err = fill_array(in, bslice)
+	err = fillArray(in, bslice)
 	binary.Read(bytes.NewBuffer(bslice), binary.LittleEndian, &out)
 	return
 }
 
-func read_f32(in byteReader) (out float64, err error) {
+func readF32(in io.ByteReader) (out float64, err error) {
 	var bs [4]byte
 	bslice := bs[:]
 
-	err = fill_array(in, bslice)
+	err = fillArray(in, bslice)
 
 	// convert MBF to IEEE
 	//  http://stackoverflow.com/questions/2973913/convert-mbf-single-and-double-to-ieee
@@ -55,11 +56,11 @@ func read_f32(in byteReader) (out float64, err error) {
 	return
 }
 
-func read_f64(in byteReader) (out float64, err error) {
+func readF64(in io.ByteReader) (out float64, err error) {
 	var bs [8]byte
 	bslice := bs[:]
 
-	err = fill_array(in, bslice)
+	err = fillArray(in, bslice)
 
 	// convert MBF to IEEE
 	//  http://stackoverflow.com/questions/2973913/convert-mbf-single-and-double-to-ieee

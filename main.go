@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"os"
+
+	"github.com/rwtodd/apputil-go/errs"
 )
 
 const (
@@ -25,31 +27,31 @@ const (
 
 	float_prefix_4b = 0x1D // four-byte int prefix
 	float_prefix_8b = 0x1F // eight-byte float prefix
-
-	lpointer_prefix = 0x0D // line pointer, we should NEVER see this
 )
 
-type byteReader func() (byte, error)
-
-func decoder(in byteReader) (bd byteReader, err error) {
+// decoder decides whether to use the 'unprotect' decryption or not.
+func decoder(in io.ByteReader) (bd io.ByteReader, err error) {
 	// check the first byte
-	b, err := in()
+	b, err := in.ReadByte()
 	switch b {
 	case first_byte:
 		bd = in
 	case first_bcrpt:
-		unp := &unprotector{src: in}
-		bd = unp.ReadByte
+		bd = &unprotector{src: in}
 	default:
-		err = fmt.Errorf("This file is not a tokenized BAS file! First byte: <%02x>", b)
+		err = errs.First("Decoding",
+			err,
+			fmt.Errorf("This file is not a tokenized BAS file! First byte: <%02x>", b))
 	}
 	return
 }
 
-func read_lineno(in byteReader) (uint16, error) {
+// readLineNum reads the next line number from the stream. It
+// detects EOF via a "next line pointer" of 0.
+func readLineNum(in io.ByteReader) (uint16, error) {
 	// check the "next line" pointer for 0, return EOF if
 	// we find it.
-	ptr, err := read_uint16(in)
+	ptr, err := readUint16(in)
 	if ptr == 0 {
 		return ptr, io.EOF
 	} else if err != nil {
@@ -57,11 +59,12 @@ func read_lineno(in byteReader) (uint16, error) {
 	}
 
 	// return the line number...
-	return read_uint16(in)
+	return readUint16(in)
 }
 
-func get_next_tok(in byteReader) (ans *token) {
-	tok, _ := in()
+// nextToken decodes the next token from the input.
+func nextToken(in io.ByteReader) (ans *token) {
+	tok, _ := in.ReadByte()
 
 	// it might represent itself
 	if tok >= 0x20 && tok <= 0x7E {
@@ -78,28 +81,28 @@ func get_next_tok(in byteReader) (ans *token) {
 	// it might require more bytes read
 	switch tok {
 	case lnumber_prefix:
-		lnum, _ := read_uint16(in)
+		lnum, _ := readUint16(in)
 		ans = numToken(int64(lnum), 10)
 	case octal_prefix:
-		snum, _ := read_int16(in)
+		snum, _ := readInt16(in)
 		ans = numToken(int64(snum), 8)
 	case hex_prefix:
-		snum, _ := read_int16(in)
+		snum, _ := readInt16(in)
 		ans = numToken(int64(snum), 16)
 	case int_prefix_2b:
-		snum, _ := read_int16(in)
+		snum, _ := readInt16(in)
 		ans = numToken(int64(snum), 10)
 	case int_prefix_1b:
-		bnum, _ := in()
+		bnum, _ := in.ReadByte()
 		ans = numToken(int64(bnum), 10)
 	case float_prefix_4b:
-		fnum, _ := read_f32(in)
+		fnum, _ := readF32(in)
 		ans = fnumToken(fnum, 32)
 	case float_prefix_8b:
-		fnum, _ := read_f64(in)
+		fnum, _ := readF64(in)
 		ans = fnumToken(fnum, 64)
 	case 0xfd, 0xfe, 0xff:
-		second, _ := in()
+		second, _ := in.ReadByte()
 		ans = opcodeToken((uint16(tok) << 8) | uint16(second))
 	case end_of_line:
 		ans = nil
@@ -110,40 +113,44 @@ func get_next_tok(in byteReader) (ans *token) {
 	return
 }
 
-// filter the tokens based on a few patterns:
+// outputFiltered filters the tokens based on a few patterns:
 // 3A A1     --> A1   ":ELSE"  --> "ELSE"
 // 3A 8F D9  --> D9   ":REM'"  --> "'"
 // B1 E9     --> B1   "WHILE+" --> "WHILE"
-func unfold(toks []*token) (string, []*token) {
+func outputFiltered(toks []*token) {
 	ln := len(toks)
+	idx := 0
+	
+	for idx < ln {
+		remaining := ln - idx
 
-	switch toks[0].opcode {
-	case 0x3A:
-		if ln >= 2 && toks[1].opcode == 0xA1 {
-			return "ELSE", toks[2:]
-		} else if ln >= 3 && toks[1].opcode == 0x8F && toks[2].opcode == 0xD9 {
-			return "'", toks[3:]
+		switch toks[idx].opcode {
+		case 0x3A:
+			if remaining >= 2 && toks[idx+1].opcode == 0xA1 {
+				idx++
+			} else if remaining >= 3 && toks[idx+1].opcode == 0x8F && toks[idx+2].opcode == 0xD9 {
+				idx += 2
+			} 
+		case 0xB1:
+			if remaining >= 2 && toks[idx+1].opcode == 0xE9 {
+				toks[idx+1] = toks[idx]
+				idx++
+			}
 		}
-	case 0xB1:
-		if ln >= 2 && toks[1].opcode == 0xE9 {
-			return "WHILE", toks[2:]
-		}
-	}
-	return toks[0].str, toks[1:]
-}
 
-func output_filtered(toks []*token) {
-	for len(toks) > 0 {
-		var nxt string
-		nxt, toks = unfold(toks)
-		fmt.Print(nxt)
+		fmt.Print(toks[idx].str)
+		idx++
 	}
+
 	fmt.Println("")
 }
 
-func cat(in byteReader) {
+// cat is the high-level driver of the program (named after the
+// UNIX tool.  It pulls in a line of tokens at a time, and sends
+// them to be output.
+func cat(in io.ByteReader) {
 	for {
-		line, err := read_lineno(in)
+		line, err := readLineNum(in)
 		if err == io.EOF {
 			break
 		}
@@ -157,10 +164,10 @@ func cat(in byteReader) {
 		tok = literalToken("  ")
 		for tok != nil {
 			toks = append(toks, tok)
-			tok = get_next_tok(in)
+			tok = nextToken(in)
 		}
 
-		output_filtered(toks)
+		outputFiltered(toks)
 	}
 }
 
@@ -184,7 +191,7 @@ func main() {
 	}
 
 	br := bufio.NewReader(infl)
-	input, err := decoder(br.ReadByte)
+	input, err := decoder(br)
 	if err != nil {
 		fmt.Println(err)
 		return
