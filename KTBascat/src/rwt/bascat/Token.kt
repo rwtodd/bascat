@@ -9,31 +9,21 @@ import java.util.*
 internal data class Token private constructor(val opcode:Int, val description:String) {
     internal companion object {
 
-        fun fromOpcode(op:Int) : Token {
-            return Token(op,  opcodes.get(op) ?: "<BAD OPCODE>" )
-        }
+        fun fromOpcode(op:Int) = Token(op,  opcodes.get(op) ?: "<BAD OPCODE>" )
 
-        fun fromLiteral(lit:String) : Token {
-            return Token(lit[0].toInt(), lit)
-        }
+        fun fromLiteral(lit:String) = Token(lit[0].toInt(), lit)
 
-        fun fromLiteral(lit:Char) : Token {
-            return Token(lit.toInt(), Character.toString(lit))
-        }
+        fun fromLiteral(lit:Char) = Token(lit.toInt(), Character.toString(lit))
 
-        fun fromNumber(num:Long, base:Int) : Token {
-            return Token(-1,
-                    when(base) {
+        fun fromNumber(num:Long, base:Int) =
+               Token(-1,
+                     when(base) {
                         8  -> String.format("&O%o", num)
                         16 -> String.format("&H%X", num)
                         else -> num.toString()
-                    })
-        }
+                     })
 
-        fun fromFloat(num:Double) : Token {
-            return Token(-1, String.format("%G",num))
-        }
-
+        fun fromFloat(num:Double) = Token(-1, String.format("%G",num))
 
         private val opcodes: HashMap<Int, String> = HashMap(200)
         init
