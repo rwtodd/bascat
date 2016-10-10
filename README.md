@@ -10,10 +10,11 @@ Go, but it might be useful to someone.
 ## Multiple Languages
 
 The original version I did was in Go.  But, in March 2016 I 
-created a Scala version and an F# version.  Then in May 2016 I did a java port.  Of them all,
-I think the F# version came out the cleanest.  It's a really
-nice language!  Anyway, all three are in this repo available
-for comparison.
+created a Scala version and an F# version.  Then in May 2016 I did a java port, and in 
+October I added a Kotlin version.  Generally, I think the Scala and F# ones edge out
+the rest in terms of a clean implementation, due to the pattern-matching you can
+do on the sequences in those languages.  Anyway, all implementations are in this repo 
+and available for comparison.
 
 ## Go Get
 
