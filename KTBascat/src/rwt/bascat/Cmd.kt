@@ -28,7 +28,7 @@ fun main(args: Array<String>) {
 
 }
 
-class BasCat(private val rdr: BinaryReader) {
+internal class BasCat(private val rdr: BinaryReader) {
 
     private fun nextToken() : Token {
         val nxt = rdr.readu8()

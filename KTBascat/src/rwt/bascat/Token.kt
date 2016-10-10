@@ -6,22 +6,22 @@ import java.util.*
  * A data class for Tokens
  * Created by richard todd on 10/9/2016.
  */
-data class Token(val opcode:Int, val description:String) {
-    companion object {
+internal data class Token private constructor(val opcode:Int, val description:String) {
+    internal companion object {
 
-        public fun fromOpcode(op:Int) : Token {
+        fun fromOpcode(op:Int) : Token {
             return Token(op,  opcodes.get(op) ?: "<BAD OPCODE>" )
         }
 
-        public fun fromLiteral(lit:String) : Token {
+        fun fromLiteral(lit:String) : Token {
             return Token(lit[0].toInt(), lit)
         }
 
-        public fun fromLiteral(lit:Char) : Token {
+        fun fromLiteral(lit:Char) : Token {
             return Token(lit.toInt(), Character.toString(lit))
         }
 
-        public fun fromNumber(num:Long, base:Int) : Token {
+        fun fromNumber(num:Long, base:Int) : Token {
             return Token(-1,
                     when(base) {
                         8  -> String.format("&O%o", num)
@@ -30,7 +30,7 @@ data class Token(val opcode:Int, val description:String) {
                     })
         }
 
-        public fun fromFloat(num:Double) : Token {
+        fun fromFloat(num:Double) : Token {
             return Token(-1, String.format("%G",num))
         }
 

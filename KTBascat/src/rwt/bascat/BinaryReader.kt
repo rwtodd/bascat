@@ -8,7 +8,7 @@ import java.nio.ByteOrder
  * tokenized BAS file.
  * Created by richard todd on 10/9/2016.
  */
-class BinaryReader(private val src: () -> Int) {
+internal class BinaryReader(private val src: () -> Int) {
     private val buf = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN)
 
     fun read8() : Int = src()

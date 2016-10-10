@@ -1,7 +1,5 @@
 package rwt.bascat
 
-import java.util.function.IntSupplier
-
 /**
  * A decrypter for protected BAS files.
  * I found the algorithm in a python program ("PC-BASIC"),
@@ -15,7 +13,9 @@ import java.util.function.IntSupplier
  * mean that as the 11-index goes from 0 to 10, the reversed index goes from 11 to 1.
  * @author richard todd
  */
-class Unprotector(private val ins: () -> Int)  {
+internal class Unprotector(private val ins: () -> Int)  {
+    private val key13 = intArrayOf(0xA9, 0x84, 0x8D, 0xCD, 0x75, 0x83, 0x43, 0x63, 0x24, 0x83, 0x19, 0xF7, 0x9A)
+    private val key11 = intArrayOf(0x1E, 0x1D, 0xC4, 0x77, 0x26, 0x97, 0xE0, 0x74, 0x59, 0x88, 0x7C)
 
     private var idx13: Int = 0
     private var idx11: Int = 0
@@ -40,12 +40,6 @@ class Unprotector(private val ins: () -> Int)  {
         }
 
         return ans and 0xFF
-    }
-
-    companion object {
-
-        private val key13 = intArrayOf(0xA9, 0x84, 0x8D, 0xCD, 0x75, 0x83, 0x43, 0x63, 0x24, 0x83, 0x19, 0xF7, 0x9A)
-        private val key11 = intArrayOf(0x1E, 0x1D, 0xC4, 0x77, 0x26, 0x97, 0xE0, 0x74, 0x59, 0x88, 0x7C)
     }
 
 }
