@@ -24,42 +24,19 @@ final class BasCat(src: ()=>Int) {
   }
 
   private def nextToken(): Token = in.readu8() match {
-      // unexpected EOF
       case -1 =>  throw new EOFException("Unexpected EOF!")
-
-      // ASCII literals 
-      case x if (x >= 0x20 && x <= 0x7E) => Token.fromLiteral(x)
-
-      // 11 -> 1B are the digits 0 to 10
-      case x if (x >= 0x11 && x <= 0x1B) => Token.fromNumber(x - 0x11, 10)
-
-      // line-number
-      case 0x0E =>   Token.fromNumber(in.readu16(), 10)
-      
-      // octal number
-      case 0x0B =>   Token.fromNumber(in.read16(), 8)
-
-      // hex number
-      case 0x0C =>   Token.fromNumber(in.read16(), 16)
-
-      // 2-byte int
-      case 0x1C =>   Token.fromNumber(in.read16(), 10)
-
-      // 1-byte int
-      case 0x0F =>   Token.fromNumber(in.readu8(), 10)
-
-      // 4-byte float 
-      case 0x1D =>   Token.fromFloat(in.readf32())
-
-      // 8-byte float 
-      case 0x1F =>   Token.fromFloat(in.readf64())
-
-      // 2-byte opcodes 
-      case x if (x >= 0xFD && x <= 0xFF) =>
-          Token.fromOpcode( (x<<8) | in.readu8() )
- 
-      // 1-byte opcodes
-      case x => Token.fromOpcode(x)
+      case x if (x >= 0x20 && x <= 0x7E) => Token.fromLiteral(x)           // ASCII literals 
+      case x if (x >= 0x11 && x <= 0x1B) => Token.fromNumber(x - 0x11, 10) // the digits 0 to 10
+      case 0x0E => Token.fromNumber(in.readu16(), 10)                      // line-number     
+      case 0x0B => Token.fromNumber(in.read16(), 8)                        // octal number
+      case 0x0C => Token.fromNumber(in.read16(), 16)                       // hex number
+      case 0x1C => Token.fromNumber(in.read16(), 10)                       // 2-byte int
+      case 0x0F => Token.fromNumber(in.readu8(), 10)                       // 1-byte int
+      case 0x1D => Token.fromFloat(in.readf32())                           // 4-byte float 
+      case 0x1F => Token.fromFloat(in.readf64())                           // 8-byte float 
+      case x if (x >= 0xFD && x <= 0xFF) => 
+                                 Token.fromOpcode( (x<<8) | in.readu8() )  // 2-byte opcodes 
+      case x => Token.fromOpcode(x)                                        // 1-byte opcodes
      } 
 
   private def line(): List[Token] = {
@@ -94,4 +71,5 @@ object BasCat {
         fin.close()
      }
    }
+
 }
