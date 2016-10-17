@@ -1,0 +1,10 @@
+<#if licenseFirst??>
+${licenseFirst}
+</#if>
+${licensePrefix}Copyright Richard Todd. I put the code under the
+${licensePrefix}GPL v2.0.  See the LICENSE file in the repository.
+${licensePrefix}for more information.
+<#if licenseLast??>
+${licenseLast}
+</#if>
+

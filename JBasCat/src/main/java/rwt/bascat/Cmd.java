@@ -130,21 +130,6 @@ public class Cmd {
         return answer; 
    }
    
-//     @annotation.tailrec
-//  private def printLine(in: List[Token]):Unit = {
-//    val (str,lst) = in match { 
-//      case Nil => System.out.println(""); return
-//      case Token(0x3A,_) :: Token(0xA1,out) :: rest                  => (out,rest)
-//      case Token(0x3A,_) :: Token(0x8F,_) :: Token(0xD9,out) :: rest => (out,rest)
-//      case Token(0xB1,out) :: Token(0xE9,_) :: rest                  => (out,rest)
-//      case Token(_,out) :: rest                                      => (out,rest)
-//    }
-//
-//    System.out.print(str)
-//    printLine(lst)    
-//  }
-
-   
    private void printLine(List<Token> lst) { 
       int idx = 0;
       final int sz = lst.size();
