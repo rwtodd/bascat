@@ -9,20 +9,6 @@ final class BasCat(src: ()=>Int) {
 
   private val in = new BinaryReader(src)
 
-  @annotation.tailrec
-  private def printLine(in: List[Token]):Unit = {
-    val (str,lst) = in match { 
-      case Nil => System.out.println(""); return
-      case Token(0x3A,_) :: Token(0xA1,out) :: rest                  => (out,rest)
-      case Token(0x3A,_) :: Token(0x8F,_) :: Token(0xD9,out) :: rest => (out,rest)
-      case Token(0xB1,out) :: Token(0xE9,_) :: rest                  => (out,rest)
-      case Token(_,out) :: rest                                      => (out,rest)
-    }
-
-    System.out.print(str)
-    printLine(lst)    
-  }
-
   private def nextToken(): Token = in.readu8() match {
       case -1 =>  throw new EOFException("Unexpected EOF!")
       case x if (x >= 0x20 && x <= 0x7E) => Token.fromLiteral(x)           // ASCII literals 
@@ -48,7 +34,23 @@ final class BasCat(src: ()=>Int) {
         lineNo :: Token.fromLiteral("  ") :: toks
   }
 
-  def cat(): Unit = Stream.continually(line).takeWhile(!_.isEmpty).foreach(printLine)
+  private def lines = Stream.continually(line).takeWhile(!_.isEmpty)
+
+  private def changePatterns(in: List[Token]): Array[Token] = {
+    def matcher(toks : List[Token]) : Option[(Token, List[Token])] = toks match { 
+        case Nil                                                     => None
+        case Token(0x3A) :: (t @ Token(0xA1)) :: rest                => Some(t,rest)
+        case Token(0x3A) :: Token(0x8F) :: (t @ Token(0xD9)) :: rest => Some(t,rest)
+        case (t @ Token(0xB1)) :: Token(0xE9) :: rest                => Some(t,rest)
+        case t :: rest                                               => Some(t,rest)
+      }
+
+    Utility.unfold(in, matcher)
+  }
+
+  private def genString(toks: Array[Token]) = toks.map(_.str).mkString
+
+  def cat(): Unit = lines.map(changePatterns).map(genString).foreach(System.out.println)
 
 }
 
@@ -72,4 +74,20 @@ object BasCat {
      }
    }
 
+}
+
+object Utility {
+  // a specific, non-generic unfold utility function for the pattern changing part 
+  def unfold(seed: List[Token], 
+                     func: List[Token] => Option[(Token,List[Token])]) : Array[Token] = {
+      val bldr = new scala.collection.mutable.ArrayBuilder.ofRef[Token]()
+      bldr.sizeHint(seed.size)
+      var ans = func(seed) 
+      while(ans.isDefined) {
+          val (v, newSeed) = ans.get 
+          bldr += v
+          ans = func(newSeed)
+      }
+      bldr.result
+  }
 }

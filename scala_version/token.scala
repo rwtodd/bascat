@@ -3,24 +3,26 @@
 
 package rwt.bascat
 
-final case class Token(op: Int, str: String)
+final class Token(val op: Int, val str: String)
 
 object Token {
   def fromOpcode(op: Int) = 
-      Token(op, opcodes.getOrElse(op, s"<Token: $op>"))
+      new Token(op, opcodes.getOrElse(op, s"<Token: $op>"))
 
-  def fromLiteral(str: String) =  Token(str(0),str)
-  def fromLiteral(ch: Int) =  Token(ch,ch.toChar.toString)
+  def fromLiteral(str: String) =  new Token(str(0),str)
+  def fromLiteral(ch: Int) =  new Token(ch,ch.toChar.toString)
 
   def fromNumber(num: Long, base: Int) = 
-      Token(-1, 
-            base match {
-              case  8 => "&O%o".format(num)
-              case 16 => "&H%X".format(num)
-              case  _ => num.toString()
-            }) 
+      new Token(-1, 
+               base match {
+                 case  8 => "&O%o".format(num)
+                 case 16 => "&H%X".format(num)
+                 case  _ => num.toString()
+               }) 
 
-  def fromFloat(num: Double) = Token(-1, "%G".format(num))
+  def fromFloat(num: Double) = new Token(-1, "%G".format(num))
+
+  def unapply(t: Token) : Option[Int] = Some(t.op)
 
   /** opcodes represents the BASIC tokens which are shorthand
     * for keywords. 
