@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/rwtodd/apputil-go/errs"
+	"github.com/rwtodd/apputil/errs"
 )
 
 const (
