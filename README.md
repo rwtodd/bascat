@@ -9,18 +9,15 @@ Go, but it might be useful to someone.
 
 ## Multiple Languages
 
-The original version I did was in Go.  But, in March 2016 I 
-created a Scala version and an F# version.  Then in May 2016 I did a java port, and in 
-October I added a Kotlin version.  Generally, I think the Scala and F# ones edge out
-the rest in terms of a clean implementation, due to the pattern-matching you can
-do on the sequences in those languages.  Anyway, all implementations are in this repo 
-and available for comparison.
+The original version I did was in Go (in this repo). I did several other verisions in
+other languages (scala, java, kotlin, fsharp etc.), but they have since been removed 
+from this repo.  They are now elsewhere in my github account. 
 
 ## Go Get
 
 You should be able to install this utility with:
 
-    go get github.com/rwtodd/bascat
+    go get github.com/rwtodd/Go.Bascat/cmd/bascat
 
 
 ## Unprotect Feature
