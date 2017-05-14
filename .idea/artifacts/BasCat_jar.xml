@@ -1,0 +1,11 @@
+<component name="ArtifactManager">
+  <artifact name="BasCat:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/BasCat_jar</output-path>
+    <root id="root">
+      <element id="archive" name="BasCat.jar">
+        <element id="module-output" name="BasCat" />
+      </element>
+      <element id="library" level="project" name="KotlinJavaRuntime" />
+    </root>
+  </artifact>
+</component>
