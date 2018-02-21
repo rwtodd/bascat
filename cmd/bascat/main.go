@@ -120,24 +120,26 @@ func nextToken(in io.ByteReader) (ans *token) {
 func outputFiltered(toks []*token) {
 	idx, ln := 0, len(toks)
 	lookingAt := func(tgt ...uint16) bool {
-        if len(tgt) > (ln - idx) {
-            return false
-        }
-        for i,v := range tgt {
-             if  toks[idx+i].opcode != v {  return false }
-        }
-        return true
-    }
+		if len(tgt) > (ln - idx) {
+			return false
+		}
+		for i, v := range tgt {
+			if toks[idx+i].opcode != v {
+				return false
+			}
+		}
+		return true
+	}
 
 	for idx < ln {
-        if lookingAt(0x3A,0xA1) {
-				idx++
-        } else if lookingAt(0x3A,0x8F,0xD9) {
-				idx += 2
-        } else if lookingAt(0xB1,0xE9) {
-				toks[idx+1] = toks[idx]
-				idx++
-        }
+		if lookingAt(0x3A, 0xA1) {
+			idx++
+		} else if lookingAt(0x3A, 0x8F, 0xD9) {
+			idx += 2
+		} else if lookingAt(0xB1, 0xE9) {
+			toks[idx+1] = toks[idx]
+			idx++
+		}
 		fmt.Print(toks[idx].str)
 		idx++
 	}
