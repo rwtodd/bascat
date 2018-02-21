@@ -6,7 +6,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/rwtodd/apputil/errs"
+	"github.com/rwtodd/Go.AppUtil/errs"
 )
 
 const (
@@ -118,26 +118,26 @@ func nextToken(in io.ByteReader) (ans *token) {
 // 3A 8F D9  --> D9   ":REM'"  --> "'"
 // B1 E9     --> B1   "WHILE+" --> "WHILE"
 func outputFiltered(toks []*token) {
-	ln := len(toks)
-	idx := 0
-	
-	for idx < ln {
-		remaining := ln - idx
+	idx, ln := 0, len(toks)
+	lookingAt := func(tgt ...uint16) bool {
+        if len(tgt) > (ln - idx) {
+            return false
+        }
+        for i,v := range tgt {
+             if  toks[idx+i].opcode != v {  return false }
+        }
+        return true
+    }
 
-		switch toks[idx].opcode {
-		case 0x3A:
-			if remaining >= 2 && toks[idx+1].opcode == 0xA1 {
+	for idx < ln {
+        if lookingAt(0x3A,0xA1) {
 				idx++
-			} else if remaining >= 3 && toks[idx+1].opcode == 0x8F && toks[idx+2].opcode == 0xD9 {
+        } else if lookingAt(0x3A,0x8F,0xD9) {
 				idx += 2
-			} 
-		case 0xB1:
-			if remaining >= 2 && toks[idx+1].opcode == 0xE9 {
+        } else if lookingAt(0xB1,0xE9) {
 				toks[idx+1] = toks[idx]
 				idx++
-			}
-		}
-
+        }
 		fmt.Print(toks[idx].str)
 		idx++
 	}
