@@ -1,4 +1,7 @@
 use std::env::args;
+use std::fs::File;
+use std::io::{BufReader,Error,ErrorKind};
+use std::io::prelude::*;
 
 const TOKENS : [&str;215] = [
     /* 0x11 - 0x1B */
@@ -59,6 +62,56 @@ const TOKENS : [&str;215] = [
     "STICK", "STRIG", "EOF", "LOC", "LOF"
 ];
 
+
+type Bytes = Box<Iterator<Item=std::io::Result<u8>>>;
+
+fn read_u8(b: &mut Bytes) -> u8 {
+  b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8)
+}
+
+fn read_i16(b: &mut Bytes) -> i16 {
+  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as i16;
+  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as i16;
+  (b2 << 8) | b1 
+}
+
+fn read_u16(b: &mut Bytes) -> u16 {
+  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u16;
+  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u16;
+  (b2 << 8) | b1 
+}
+fn read_f32(b: &mut Bytes) -> f32 {
+  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b3 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b4 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  0.32
+}
+
+fn read_f64(b: &mut Bytes) -> f32 {
+  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b3 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b4 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b5 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b6 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b7 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  let b8 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
+  0.64
+}
+
+fn get_reader(fname: String) -> std::io::Result<Bytes> {
+    let file = File::open(fname)?;
+    let mut buf_reader = BufReader::new(file);
+    let mut bytes = Box::new(buf_reader.bytes()); 
+    match bytes.next() {
+       Some(Ok(0xff)) => Ok(bytes),
+       Some(Ok(0xfe)) => Err(Error::new(ErrorKind::Other, "encrypted file!")),
+       Some(Err(e))   => Err(e),
+       _              => Err(Error::new(ErrorKind::Other, "not a BAS file!")),
+    }
+}
+
 #[derive(Debug)]
 struct Token  {
   num: u16,
@@ -66,28 +119,61 @@ struct Token  {
 }
 
 impl Token {
-  fn new(num : u16) -> Token {
+  fn arbitrary(desc: String) -> Token {
+     Token { num: 1, desc: desc }
+  }
+
+  fn new(num: u16, b: &mut Bytes) -> Token {
     match num {
-      0x00 => Token { num: 0, desc: String::from("EOF") },
-      /* 0x0B => (lambda rdr: _Token.from_number(rdr.read_16(), 8)),
-      0x0C => (lambda rdr: _Token.from_number(rdr.read_16(), 16)),
-      0x0E => (lambda rdr: _Token.from_number(rdr.read_u16(), 10)),
-      0x0F => (lambda rdr: _Token.from_number(rdr.read_u8(), 10)),
-      0x1C => (lambda rdr: _Token.from_number(rdr.read_16(), 10)),
-      0x1D => (lambda rdr: _Token.from_float(rdr.read_f32())),
-      0x1F => (lambda rdr: _Token.from_float(rdr.read_f64())),  */
+      0x00 => Token { num: num, desc: String::from("EOF") },
+      0x0B => Token { num: num, desc: format!("&O{:o}",read_i16(b)) },
+      0x0C => Token { num: num, desc: format!("&H{:x}",read_i16(b)) },
+      0x0E => Token { num: num, desc: format!("{}",read_u16(b)) },
+      0x0F => Token { num: num, desc: format!("{}",read_u8(b)) },
       0x11 ... 0x1B => Token { num: num, desc: String::from(TOKENS[(num - 0x11) as usize]) },
+      0x1C => Token { num: num, desc: format!("{}",read_i16(b)) },
+      0x1D => Token { num: num, desc: format!("{}",read_f32(b)) },
+      0x1F => Token { num: num, desc: format!("{}",read_f64(b)) },
+      0x20 ... 0x7E => Token { num: num, desc: String::from_utf16(&[num]).unwrap() },
       0x81 ... 0xF4 => Token { num: num, desc: String::from(TOKENS[(num - 118) as usize]) },
+      0xfd ... 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ),
       0xFD81 ... 0xFD8B => Token { num: num, desc: String::from(TOKENS[(num - 64770) as usize]) },
       0xFE81 ... 0xFEA8 => Token { num: num, desc: String::from(TOKENS[(num - 65015) as usize]) },
       0xFF81 ... 0xFFA5 => Token { num: num, desc: String::from(TOKENS[(num - 65231) as usize]) },
-      _ => Token { num: 1, desc: String::from("UNK!") },
+      _ => Token { num: num, desc: format!("<UNK! {:X}>", num) },
    }
  }
 }
 
-fn main() {
-    let which = args().nth(1).unwrap_or_else(|| String::from("0"))
-                      .parse::<u16>().unwrap();
-    println!("Hello, world!: {:?}", Token::new(which))
+
+fn read_line(b: &mut Bytes) -> Vec<Token> {
+  let mut result = Vec::new();
+  if read_u16(b) != 0 {
+     result.push( Token::arbitrary(format!("{}  ",read_u16(b))) );
+     loop {
+        let opcode = read_u8(b) as u16;
+        if opcode == 0 { break }
+        result.push( Token::new(opcode, b) )
+     }
+  }
+  result
+}
+
+fn display_line(l: Vec<Token>) {
+   for t in l {
+      print!("{}",t.desc);
+   }
+   println!();
+}
+
+fn main() -> std::io::Result<()> {
+    let fname = args().nth(1).unwrap_or_else(|| String::from("tour.gwbas"));
+    println!("Parsing {}", fname);
+    let mut rdr = get_reader(fname)?;
+    loop {
+       let l = read_line(&mut rdr);
+       if l.is_empty() { break }
+       display_line(l);
+    }
+    Ok(()) 
 }
