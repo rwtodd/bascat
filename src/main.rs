@@ -102,7 +102,7 @@ fn read_f64(b: &mut Bytes) -> f32 {
 
 fn get_reader(fname: String) -> std::io::Result<Bytes> {
     let file = File::open(fname)?;
-    let mut buf_reader = BufReader::new(file);
+    let buf_reader = BufReader::new(file);
     let mut bytes = Box::new(buf_reader.bytes()); 
     match bytes.next() {
        Some(Ok(0xff)) => Ok(bytes),
@@ -112,7 +112,6 @@ fn get_reader(fname: String) -> std::io::Result<Bytes> {
     }
 }
 
-#[derive(Debug)]
 struct Token  {
   num: u16,
   desc: String,
@@ -136,7 +135,7 @@ impl Token {
       0x1F => Token { num: num, desc: format!("{}",read_f64(b)) },
       0x20 ... 0x7E => Token { num: num, desc: String::from_utf16(&[num]).unwrap() },
       0x81 ... 0xF4 => Token { num: num, desc: String::from(TOKENS[(num - 118) as usize]) },
-      0xfd ... 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ),
+      0xfd ... 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ), // TODO: put this at top of match...
       0xFD81 ... 0xFD8B => Token { num: num, desc: String::from(TOKENS[(num - 64770) as usize]) },
       0xFE81 ... 0xFEA8 => Token { num: num, desc: String::from(TOKENS[(num - 65015) as usize]) },
       0xFF81 ... 0xFFA5 => Token { num: num, desc: String::from(TOKENS[(num - 65231) as usize]) },
@@ -159,16 +158,27 @@ fn read_line(b: &mut Bytes) -> Vec<Token> {
   result
 }
 
-fn display_line(l: Vec<Token>) {
-   for t in l {
-      print!("{}",t.desc);
+fn display_line(mut toks: Vec<Token>) {
+   let mut idx :usize = 0;
+   let max = toks.len();
+   while idx < max {
+      if ((max-idx)>1) && (toks[idx].num == 0x3A) && (toks[idx+1].num == 0xA1) {
+          idx += 1 
+      }
+      else if ((max-idx)>2) && (toks[idx].num == 0x3A) && (toks[idx+1].num == 0x8F) && (toks[idx+2].num == 0xD9) {
+          idx += 2
+      } else if ((max-idx)>1) && (toks[idx].num == 0xB1) && (toks[idx+1].num == 0xE9) {
+          toks[idx+1].desc = toks[idx].desc.clone();
+          idx += 1
+      } 
+      print!("{}",toks[idx].desc);
+      idx += 1
    }
    println!();
 }
 
 fn main() -> std::io::Result<()> {
     let fname = args().nth(1).unwrap_or_else(|| String::from("tour.gwbas"));
-    println!("Parsing {}", fname);
     let mut rdr = get_reader(fname)?;
     loop {
        let l = read_line(&mut rdr);
