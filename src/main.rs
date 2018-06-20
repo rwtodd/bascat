@@ -198,20 +198,18 @@ impl Token {
 }
 
 
-fn read_line(b: &mut Bytes) -> Vec<Token> {
-  let mut result = Vec::new();
+fn read_line(b: &mut Bytes, buf: &mut Vec<Token>) {
   if read_u16(b) != 0 {
-     result.push( Token::arbitrary(format!("{}  ",read_u16(b))) );
+     buf.push( Token::arbitrary(format!("{}  ",read_u16(b))) );
      loop {
         let opcode = read_u8(b) as u16;
         if opcode == 0 { break }
-        result.push( Token::new(opcode, b) )
+        buf.push( Token::new(opcode, b) )
      }
   }
-  result
 }
 
-fn display_line(dest: &mut StdoutLock, mut toks: Vec<Token>) -> std::io::Result<()> {
+fn display_line(dest: &mut StdoutLock, toks: &mut Vec<Token>) -> std::io::Result<()> {
    let mut idx :usize = 0;
    let max = toks.len();
    while idx < max {
@@ -235,10 +233,12 @@ fn main() -> std::io::Result<()> {
     let mut rdr = get_reader(fname)?;
     let stdout = io::stdout();
     let mut handle = stdout.lock();
+    let mut line_buf = vec![];
     loop {
-       let l = read_line(&mut rdr);
-       if l.is_empty() { break }
-       display_line(&mut handle, l)?;
+       read_line(&mut rdr, &mut line_buf);
+       if line_buf.is_empty() { break }
+       display_line(&mut handle, &mut line_buf)?;
+       line_buf.clear(); 
     }
     Ok(()) 
 }
