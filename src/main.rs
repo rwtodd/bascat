@@ -65,6 +65,33 @@ const TOKENS : [&str;215] = [
 
 type Bytes = Box<Iterator<Item=std::io::Result<u8>>>;
 
+// -- Decrypting Iterator
+const KEY11 : [u8; 11] = [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C];
+const KEY13 : [u8; 13] = [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A];
+
+struct DecryptedBytes {
+   unenc: Bytes,
+   idx11: usize,
+   idx13: usize,
+}
+
+impl Iterator for DecryptedBytes {
+   type Item = std::io::Result<u8>;
+
+   fn next(&mut self) -> Option<std::io::Result<u8>> {
+      if let Some(Ok(x)) = self.unenc.next() {
+         let result = ((x - (11 - self.idx11 as u8))  ^ 
+                       (KEY11[self.idx11]) ^ 
+                       (KEY13[self.idx13])) + (13 - self.idx13 as u8);
+         self.idx11 = (self.idx11 + 1) % 11;
+         self.idx13 = (self.idx13 + 1) % 13;
+         Some(Ok(result))
+      } else {
+         Some(Ok(0u8)) 
+      }
+   }
+}
+
 #[inline]
 fn read_u8(b: &mut Bytes) -> u8 {
   if let Some(Ok(x)) = b.next() { x } else { 0u8 }
@@ -132,7 +159,7 @@ fn get_reader(fname: String) -> std::io::Result<Bytes> {
     let mut bytes = Box::new(buf_reader.bytes()); 
     match bytes.next() {
        Some(Ok(0xff)) => Ok(bytes),
-       Some(Ok(0xfe)) => Err(Error::new(ErrorKind::Other, "encrypted file!")),
+       Some(Ok(0xfe)) => Ok(Box::new(DecryptedBytes {unenc: bytes, idx11: 0, idx13: 0 })),
        Some(Err(e))   => Err(e),
        _              => Err(Error::new(ErrorKind::Other, "not a BAS file!")),
     }
