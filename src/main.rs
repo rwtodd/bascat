@@ -65,26 +65,27 @@ const TOKENS : [&str;215] = [
 
 type Bytes = Box<Iterator<Item=std::io::Result<u8>>>;
 
+#[inline]
 fn read_u8(b: &mut Bytes) -> u8 {
-  b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8)
+  if let Some(Ok(x)) = b.next() { x } else { 0u8 }
 }
 
 fn read_i16(b: &mut Bytes) -> i16 {
-  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as i16;
-  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as i16;
+  let b1 = read_u8(b) as i16;
+  let b2 = read_u8(b) as i16;
   (b2 << 8) | b1 
 }
 
 fn read_u16(b: &mut Bytes) -> u16 {
-  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u16;
-  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u16;
+  let b1 = read_u8(b) as u16;
+  let b2 = read_u8(b) as u16;
   (b2 << 8) | b1 
 }
 fn read_f32(b: &mut Bytes) -> f32 {
-  let b0 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  let mut b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  let mut b3 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  let b0 = read_u8(b);
+  let b1 = read_u8(b);
+  let mut b2 = read_u8(b);
+  let mut b3 = read_u8(b);
   if b3 == 0 {
      0.0f32
   } else {
@@ -98,14 +99,14 @@ fn read_f32(b: &mut Bytes) -> f32 {
 
 fn read_f64(b: &mut Bytes) -> f64 {
   let mut bs = [0u8; 8];
-  bs[0] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  bs[1] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  bs[2] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  bs[3] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  bs[4] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  bs[5] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  bs[6] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
-  bs[7] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[0] = read_u8(b);
+  bs[1] = read_u8(b);
+  bs[2] = read_u8(b);
+  bs[3] = read_u8(b);
+  bs[4] = read_u8(b);
+  bs[5] = read_u8(b);
+  bs[6] = read_u8(b);
+  bs[7] = read_u8(b);
   if bs[7] == 0 { 
     0.0f64
   } else {
