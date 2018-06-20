@@ -149,6 +149,7 @@ impl Token {
 
   fn new(num: u16, b: &mut Bytes) -> Token {
     match num {
+      0xfd ... 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ), 
       0x00 => Token { num: num, desc: String::from("EOF") },
       0x0B => Token { num: num, desc: format!("&O{:o}",read_i16(b)) },
       0x0C => Token { num: num, desc: format!("&H{:x}",read_i16(b)) },
@@ -160,7 +161,6 @@ impl Token {
       0x1F => Token { num: num, desc: format!("{}",read_f64(b)) },
       0x20 ... 0x7E => Token { num: num, desc: String::from_utf16(&[num]).unwrap() },
       0x81 ... 0xF4 => Token { num: num, desc: String::from(TOKENS[(num - 118) as usize]) },
-      0xfd ... 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ), // TODO: put this at top of match...
       0xFD81 ... 0xFD8B => Token { num: num, desc: String::from(TOKENS[(num - 64770) as usize]) },
       0xFE81 ... 0xFEA8 => Token { num: num, desc: String::from(TOKENS[(num - 65015) as usize]) },
       0xFF81 ... 0xFFA5 => Token { num: num, desc: String::from(TOKENS[(num - 65231) as usize]) },
