@@ -1,6 +1,6 @@
 use std::env::args;
 use std::fs::File;
-use std::io::{BufReader,Error,ErrorKind};
+use std::io::{self, BufReader,Error,ErrorKind, StdoutLock};
 use std::io::prelude::*;
 
 const TOKENS : [&str;215] = [
@@ -81,23 +81,48 @@ fn read_u16(b: &mut Bytes) -> u16 {
   (b2 << 8) | b1 
 }
 fn read_f32(b: &mut Bytes) -> f32 {
-  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b3 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b4 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  0.32
+  let b0 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  let mut b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  let mut b3 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  if b3 == 0 {
+     0.0f32
+  } else {
+     let sgn = b2 & 0x80;
+     let exp = (b3 - 2) & 0xff;
+     b3 = sgn | (exp >> 1);
+     b2 = ((exp << 7) | (b2 & 0x7f)) & 0xff;
+     f32::from_bits((b0 as u32) | (b1 as u32)<<8 | (b2 as u32)<<16 | (b3 as u32)<<24)
+  }
 }
 
-fn read_f64(b: &mut Bytes) -> f32 {
-  let b1 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b2 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b3 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b4 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b5 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b6 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b7 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  let b8 = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8) as u8;
-  0.64
+fn read_f64(b: &mut Bytes) -> f64 {
+  let mut bs = [0u8; 8];
+  bs[0] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[1] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[2] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[3] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[4] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[5] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[6] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  bs[7] = b.next().unwrap_or(Ok(0u8)).unwrap_or(0u8);
+  if bs[7] == 0 { 
+    0.0f64
+  } else {
+    let sgn = bs[6] & 0x80;
+    let exp = ((bs[3] as u16) - 128 - 1 + 1023) & 0xffff;
+    bs[7] = sgn | (((exp >> 4) & 0xff) as u8);
+    let mut left_over = ((exp << 4) & 0xff) as u8;
+    for idx in (1..7).rev() {
+        let tmp = ((bs[idx] << 1) & 0xff) | (bs[idx-1] >> 7);
+        bs[idx] = left_over | (tmp >> 4);
+        left_over = (tmp << 4) & 0xff;
+    }
+    let tmp = (bs[0] << 1) & 0xff;
+    bs[0] = left_over | (tmp >> 4);
+    f64::from_bits((bs[0] as u64) | (bs[1] as u64)<<8 | (bs[2] as u64)<<16 | (bs[3] as u64)<<24 |
+                   (bs[4] as u64)<<32 | (bs[5] as u64)<<40 | (bs[6] as u64)<<48 | (bs[7] as u64)<<56)
+  }
 }
 
 fn get_reader(fname: String) -> std::io::Result<Bytes> {
@@ -158,7 +183,7 @@ fn read_line(b: &mut Bytes) -> Vec<Token> {
   result
 }
 
-fn display_line(mut toks: Vec<Token>) {
+fn display_line(dest: &mut StdoutLock, mut toks: Vec<Token>) {
    let mut idx :usize = 0;
    let max = toks.len();
    while idx < max {
@@ -171,19 +196,21 @@ fn display_line(mut toks: Vec<Token>) {
           toks[idx+1].desc = toks[idx].desc.clone();
           idx += 1
       } 
-      print!("{}",toks[idx].desc);
-      idx += 1
+      write!(dest, "{}",toks[idx].desc);
+      idx += 1;
    }
-   println!();
+   writeln!(dest);
 }
 
 fn main() -> std::io::Result<()> {
     let fname = args().nth(1).unwrap_or_else(|| String::from("tour.gwbas"));
     let mut rdr = get_reader(fname)?;
+    let stdout = io::stdout();
+    let mut handle = stdout.lock();
     loop {
        let l = read_line(&mut rdr);
        if l.is_empty() { break }
-       display_line(l);
+       display_line(&mut handle, l);
     }
     Ok(()) 
 }
