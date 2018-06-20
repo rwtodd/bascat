@@ -183,7 +183,7 @@ fn read_line(b: &mut Bytes) -> Vec<Token> {
   result
 }
 
-fn display_line(dest: &mut StdoutLock, mut toks: Vec<Token>) {
+fn display_line(dest: &mut StdoutLock, mut toks: Vec<Token>) -> std::io::Result<()> {
    let mut idx :usize = 0;
    let max = toks.len();
    while idx < max {
@@ -196,10 +196,10 @@ fn display_line(dest: &mut StdoutLock, mut toks: Vec<Token>) {
           toks[idx+1].desc = toks[idx].desc.clone();
           idx += 1
       } 
-      write!(dest, "{}",toks[idx].desc);
+      write!(dest, "{}",toks[idx].desc)?;
       idx += 1;
    }
-   writeln!(dest);
+   return writeln!(dest);
 }
 
 fn main() -> std::io::Result<()> {
@@ -210,7 +210,7 @@ fn main() -> std::io::Result<()> {
     loop {
        let l = read_line(&mut rdr);
        if l.is_empty() { break }
-       display_line(&mut handle, l);
+       display_line(&mut handle, l)?;
     }
     Ok(()) 
 }
