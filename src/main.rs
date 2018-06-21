@@ -229,7 +229,13 @@ fn display_line(dest: &mut StdoutLock, toks: &mut Vec<Token>) -> std::io::Result
 }
 
 fn main() -> std::io::Result<()> {
-    let fname = args().nth(1).unwrap_or_else(|| String::from("tour.gwbas"));
+    let mut args = args();
+    if args.len() != 2 {
+       eprintln!("Usage: {} <gwbas file>",
+                args.nth(0).unwrap_or(String::from("bascat")));
+       std::process::exit(1);
+    }
+    let fname = args.nth(1).unwrap();
     let mut rdr = get_reader(fname)?;
     let stdout = io::stdout();
     let mut handle = stdout.lock();
