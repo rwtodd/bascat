@@ -63,14 +63,14 @@ const TOKENS : [&str;215] = [
 ];
 
 
-type Bytes = Box<Iterator<Item=std::io::Result<u8>>>;
+type Bytes = Iterator<Item=std::io::Result<u8>>;
 
 // -- Decrypting Iterator
 const KEY11 : [u8; 11] = [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C];
 const KEY13 : [u8; 13] = [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A];
 
 struct DecryptedBytes {
-   unenc: Bytes,
+   unenc: Box<Bytes>,
    idx11: usize,
    idx13: usize,
 }
@@ -153,7 +153,7 @@ fn read_f64(b: &mut Bytes) -> f64 {
   }
 }
 
-fn get_reader(fname: String) -> std::io::Result<Bytes> {
+fn get_reader(fname: String) -> std::io::Result<Box<Bytes>> {
     let file = File::open(fname)?;
     let buf_reader = BufReader::new(file);
     let mut bytes = Box::new(buf_reader.bytes()); 
