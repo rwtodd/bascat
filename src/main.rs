@@ -269,7 +269,7 @@ fn main() -> std::io::Result<()> {
     let mut rdr = get_reader(fname)?;
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    let mut line_buf = vec![];
+    let mut line_buf = Vec::new();
     loop {
        read_line(&mut rdr, &mut line_buf);
        if line_buf.is_empty() { break }
