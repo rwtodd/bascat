@@ -63,7 +63,7 @@ const TOKENS : [&str;215] = [
 ];
 
 
-type Bytes = Iterator<Item=std::io::Result<u8>>;
+type Bytes = dyn Iterator<Item=std::io::Result<u8>>;
 
 // -- Decrypting Iterator
 const KEY11 : [u8; 11] = [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C];
@@ -177,21 +177,21 @@ impl Token {
 
   fn new(num: u16, b: &mut Bytes) -> Token {
     match num {
-      0xfd ... 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ), 
+      0xfd ..= 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ), 
       0x00 => Token { num: num, desc: String::from("EOF") },
       0x0B => Token { num: num, desc: format!("&O{:o}",read_i16(b)) },
       0x0C => Token { num: num, desc: format!("&H{:x}",read_i16(b)) },
       0x0E => Token { num: num, desc: format!("{}",read_u16(b)) },
       0x0F => Token { num: num, desc: format!("{}",read_u8(b)) },
-      0x11 ... 0x1B => Token { num: num, desc: String::from(TOKENS[(num - 0x11) as usize]) },
+      0x11 ..= 0x1B => Token { num: num, desc: String::from(TOKENS[(num - 0x11) as usize]) },
       0x1C => Token { num: num, desc: format!("{}",read_i16(b)) },
       0x1D => Token { num: num, desc: format!("{}",read_f32(b)) },
       0x1F => Token { num: num, desc: format!("{}",read_f64(b)) },
-      0x20 ... 0x7E => Token { num: num, desc: String::from_utf16(&[num]).unwrap() },
-      0x81 ... 0xF4 => Token { num: num, desc: String::from(TOKENS[(num - 118) as usize]) },
-      0xFD81 ... 0xFD8B => Token { num: num, desc: String::from(TOKENS[(num - 64770) as usize]) },
-      0xFE81 ... 0xFEA8 => Token { num: num, desc: String::from(TOKENS[(num - 65015) as usize]) },
-      0xFF81 ... 0xFFA5 => Token { num: num, desc: String::from(TOKENS[(num - 65231) as usize]) },
+      0x20 ..= 0x7E => Token { num: num, desc: String::from_utf16(&[num]).unwrap() },
+      0x81 ..= 0xF4 => Token { num: num, desc: String::from(TOKENS[(num - 118) as usize]) },
+      0xFD81 ..= 0xFD8B => Token { num: num, desc: String::from(TOKENS[(num - 64770) as usize]) },
+      0xFE81 ..= 0xFEA8 => Token { num: num, desc: String::from(TOKENS[(num - 65015) as usize]) },
+      0xFF81 ..= 0xFFA5 => Token { num: num, desc: String::from(TOKENS[(num - 65231) as usize]) },
       _ => Token { num: num, desc: format!("<UNK! {:X}>", num) },
    }
  }
@@ -212,13 +212,19 @@ fn read_line(b: &mut Bytes, buf: &mut Vec<Token>) {
 fn display_line(dest: &mut StdoutLock, toks: &mut Vec<Token>) -> std::io::Result<()> {
    let mut idx :usize = 0;
    let max = toks.len();
+   let looking_at = |v:&Vec<Token>,i:usize,t1,t2| -> bool { 
+      ((max-i)>1) && (v[i].num == t1) && (v[i+1].num == t2)
+   };
+   let looking_at3 = |v:&Vec<Token>,i:usize,t1,t2,t3| -> bool { 
+      ((max-i)>2) && (v[i].num == t1) && (v[i+1].num == t2) && (v[i+2].num == t3)
+   };
    while idx < max {
-      if ((max-idx)>1) && (toks[idx].num == 0x3A) && (toks[idx+1].num == 0xA1) {
-          idx += 1 
-      }
-      else if ((max-idx)>2) && (toks[idx].num == 0x3A) && (toks[idx+1].num == 0x8F) && (toks[idx+2].num == 0xD9) {
-          idx += 2
-      } else if ((max-idx)>1) && (toks[idx].num == 0xB1) && (toks[idx+1].num == 0xE9) {
+      // Transform 3A A1    ==> A1
+      //           3A 8F D9 ==> D9
+      //           B1 E9    ==> B1
+      if      looking_at(toks,idx,0x3A,0xA1) { idx += 1 }
+      else if looking_at3(toks,idx,0x3A,0x8F,0xD9) { idx += 2 } 
+      else if looking_at(toks,idx,0xB1,0xE9) {
           toks[idx+1].desc = toks[idx].desc.clone();
           idx += 1
       } 
