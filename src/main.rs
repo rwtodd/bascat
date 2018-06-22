@@ -3,6 +3,8 @@ use std::fs::File;
 use std::io::{self, BufReader,Error,ErrorKind, StdoutLock};
 use std::io::prelude::*;
 
+/// TOKENS contains string descriptions of the canned opcodes found
+/// in GWBAS files.
 const TOKENS : [&str;215] = [
     /* 0x11 - 0x1B */
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
@@ -63,12 +65,13 @@ const TOKENS : [&str;215] = [
 ];
 
 
-type Bytes = dyn Iterator<Item=std::io::Result<u8>>;
-
-// -- Decrypting Iterator
+// -- Some support data for the decrypting Iterator
 const KEY11 : [u8; 11] = [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C];
 const KEY13 : [u8; 13] = [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A];
+// -- End of support data for the decrypting Iterator
 
+/// DecryptedBytes wraps a byte iterator for an encrypted GWBAS file, and 
+/// decrypts the data on the fly.
 struct DecryptedBytes<T>
   where T: Iterator<Item=std::io::Result<u8>> {
    unenc: T,
@@ -94,22 +97,33 @@ impl<T> Iterator for DecryptedBytes<T>
    }
 }
 
+type Bytes = dyn Iterator<Item=std::io::Result<u8>>;
+
+/// Read a u8 from a byte iterator, returning 0u8 on all
+/// errors. Zeros are guaranteed to halt the processing,
+/// so there is no harm in this behavior in error cases
+/// other than we don't report read errors to the user.
 #[inline]
 fn read_u8(b: &mut Bytes) -> u8 {
   if let Some(Ok(x)) = b.next() { x } else { 0u8 }
 }
 
+/// Read a little-endian i16 from a byte iterator.
 fn read_i16(b: &mut Bytes) -> i16 {
   let b1 = read_u8(b) as i16;
   let b2 = read_u8(b) as i16;
   (b2 << 8) | b1 
 }
 
+/// Read a little-endian u16 from a byte iterator.
 fn read_u16(b: &mut Bytes) -> u16 {
   let b1 = read_u8(b) as u16;
   let b2 = read_u8(b) as u16;
   (b2 << 8) | b1 
 }
+
+/// Read a MS MBF-style 32-bit float, and convert it to a modern IEEE float.
+/// NB: This function assumes little endian outputs are appropriate.
 fn read_f32(b: &mut Bytes) -> f32 {
   let b0 = read_u8(b);
   let b1 = read_u8(b);
@@ -126,16 +140,12 @@ fn read_f32(b: &mut Bytes) -> f32 {
   }
 }
 
+/// Read a MS MBF-style 64-bit float, and convert it to a modern IEEE double.
+/// NB: This function assumes little endian outputs are appropriate.
 fn read_f64(b: &mut Bytes) -> f64 {
   let mut bs = [0u8; 8];
-  bs[0] = read_u8(b);
-  bs[1] = read_u8(b);
-  bs[2] = read_u8(b);
-  bs[3] = read_u8(b);
-  bs[4] = read_u8(b);
-  bs[5] = read_u8(b);
-  bs[6] = read_u8(b);
-  bs[7] = read_u8(b);
+  for i in 0..8 { bs[i] = read_u8(b); }
+
   if bs[7] == 0 { 
     0.0f64
   } else {
@@ -155,6 +165,9 @@ fn read_f64(b: &mut Bytes) -> f64 {
   }
 }
 
+/// Read the first byte of FNAME, and return an iterator
+/// over the bytes of the file, with a decrypting adapter
+/// if necessary.
 fn get_reader(fname: String) -> std::io::Result<Box<Bytes>> {
     let file = File::open(fname)?;
     let buf_reader = BufReader::new(file);
@@ -163,23 +176,29 @@ fn get_reader(fname: String) -> std::io::Result<Box<Bytes>> {
        Some(Ok(0xff)) => Ok(Box::new(bytes)),
        Some(Ok(0xfe)) => Ok(Box::new(DecryptedBytes {unenc: bytes, idx11: 0, idx13: 0 })),
        Some(Err(e))   => Err(e),
-       _              => Err(Error::new(ErrorKind::Other, "not a BAS file!")),
+       _              => Err(Error::new(ErrorKind::Other, "not a GWBAS file!")),
     }
 }
 
+/// A Token is comprised of a numeric code and a String description.
+/// Vec's of these are produced from the input file, and the DESCs are
+/// output after a filtering process to clean out redundant tokens.
 struct Token  {
   num: u16,
   desc: String,
 }
 
 impl Token {
+  /// Generate a token for an arbitrary string.
   fn arbitrary(desc: String) -> Token {
      Token { num: 1, desc: desc }
   }
 
-  fn new(num: u16, b: &mut Bytes) -> Token {
+  /// Generate a token from an opcode, which sometimes requires reading
+  /// deeper into the file.
+  fn from_opcode(num: u16, b: &mut Bytes) -> Token {
     match num {
-      0xfd ..= 0xff => Token::new( (num << 8)|(read_u8(b) as u16), b ), 
+      0xfd ..= 0xff => Token::from_opcode( (num << 8)|(read_u8(b) as u16), b ), 
       0x00 => Token { num: num, desc: String::from("EOF") },
       0x0B => Token { num: num, desc: format!("&O{:o}",read_i16(b)) },
       0x0C => Token { num: num, desc: format!("&H{:x}",read_i16(b)) },
@@ -199,18 +218,21 @@ impl Token {
  }
 }
 
-
+/// Fill BUF with tokens representing the next line of the GWBAS file.
+/// At the EOF, nothing will be added to BUF.
 fn read_line(b: &mut Bytes, buf: &mut Vec<Token>) {
   if read_u16(b) != 0 {
      buf.push( Token::arbitrary(format!("{}  ",read_u16(b))) );
      loop {
         let opcode = read_u8(b) as u16;
         if opcode == 0 { break }
-        buf.push( Token::new(opcode, b) )
+        buf.push( Token::from_opcode(opcode, b) )
      }
   }
 }
 
+/// Display a line of TOKS to DEST.  Three transormation rules
+/// clean up the display by eliminating redundant tokens.
 fn display_line(dest: &mut StdoutLock, toks: &mut Vec<Token>) -> std::io::Result<()> {
    let mut idx :usize = 0;
    let max = toks.len();
