@@ -69,13 +69,15 @@ type Bytes = dyn Iterator<Item=std::io::Result<u8>>;
 const KEY11 : [u8; 11] = [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C];
 const KEY13 : [u8; 13] = [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A];
 
-struct DecryptedBytes {
-   unenc: Box<Bytes>,
+struct DecryptedBytes<T>
+  where T: Iterator<Item=std::io::Result<u8>> {
+   unenc: T,
    idx11: usize,
    idx13: usize,
 }
 
-impl Iterator for DecryptedBytes {
+impl<T> Iterator for DecryptedBytes<T> 
+  where T: Iterator<Item=std::io::Result<u8>> {
    type Item = std::io::Result<u8>;
 
    fn next(&mut self) -> Option<std::io::Result<u8>> {
@@ -156,9 +158,9 @@ fn read_f64(b: &mut Bytes) -> f64 {
 fn get_reader(fname: String) -> std::io::Result<Box<Bytes>> {
     let file = File::open(fname)?;
     let buf_reader = BufReader::new(file);
-    let mut bytes = Box::new(buf_reader.bytes()); 
+    let mut bytes = buf_reader.bytes(); 
     match bytes.next() {
-       Some(Ok(0xff)) => Ok(bytes),
+       Some(Ok(0xff)) => Ok(Box::new(bytes)),
        Some(Ok(0xfe)) => Ok(Box::new(DecryptedBytes {unenc: bytes, idx11: 0, idx13: 0 })),
        Some(Err(e))   => Err(e),
        _              => Err(Error::new(ErrorKind::Other, "not a BAS file!")),
