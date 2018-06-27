@@ -301,8 +301,8 @@
 	    (t (opcode-lookup opcode))))))
 
 
-(defun display-gwbas (rdr)
-  "read all the lines of the file, displaying them to screen"
+(defun display-gwbas (rdr stream)
+  "read all the lines of the file, and format them to STREAM"
   (flet ((parse-line ()
 		     (if (zerop (read-u16 rdr))
 			 nil
@@ -316,18 +316,18 @@
 					       :and lval = line :then (cdr lval)
 					       :always (equal kval (caar lval)))))
 			(do ()
-			    ((null line) (format t "~%"))
+			    ((null line) (format stream "~%"))
 			  (cond ((looking-at '(#x3A #xA1)) (setf line (cdr line)))
 				((looking-at '(#x3A #x8F #xD9)) (setf line (cddr line)))
 				((looking-at '(#xB1 #xE9)) (setf (cadr line) (car line)
 								 line (cdr line))))
-			  (princ (cdar line))
+			  (princ (cdar line) stream)
 			  (setf line (cdr line))))))
     (loop :for l = (parse-line) :while l :do (format-line l))))
    
-(defun bascat (fname)
-  "Parse and print a tokenized BASIC file given by FNAME"
+(defun bascat (fname &optional (stream *standard-output*))
+  "Parse a tokenized BASIC file given by FNAME, formatting output to STREAM."
   (with-open-file (inp fname
 		       :direction :input
 		       :element-type '(unsigned-byte 8))
-		  (display-gwbas (get-reader inp))))
+		  (display-gwbas (get-reader inp) stream)))
