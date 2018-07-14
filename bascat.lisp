@@ -53,19 +53,19 @@
   (multiple-value-bind (a b c d) (read-4-bytes rdr)
     (let ((sign  (if (zerop (logand #x80 c)) 1 -1))
 	  (exp   (- d 129))
-	  (scand (logior (ash (logand #x7f c) 16)
+	  (scand (logior (ash (logior #x80 c) 16)
 			 (ash b 8)
 			 a)))
       (if (= -129 exp)
 	  (float 0)
-	(float (* sign (1+ (/ scand #x800000)) (expt 2 exp)))))))
+	(float (* sign (/ scand #x800000) (expt 2 exp)))))))
 
 (defun read-mbf-64 (rdr)
   "read a MBF-64 floating point number"
   (multiple-value-bind (a b c d e f g h) (read-8-bytes rdr)
     (let ((sign  (if (zerop (logand #x80 g)) 1 -1))
 	  (exp   (- h 129))
-	  (scand (logior (ash (logand #x7f g) 48)
+	  (scand (logior (ash (logior #x80 g) 48)
 			 (ash f 40)
 			 (ash e 32)
 			 (ash d 24)
@@ -74,7 +74,7 @@
 			 a)))
       (if (= -129 exp)
 	  (float 0 1.0d0)
-	(float (* sign (1+ (/ scand #x80000000000000)) (expt 2 exp)) 1.0d0)))))
+	(float (* sign (/ scand #x80000000000000) (expt 2 exp)) 1.0d0)))))
 
 (defconstant +opcodes+
   (macrolet ((entries (&rest ents)
