@@ -46,7 +46,7 @@ func numToken(num int64, base int) *token {
 // ****************************************************
 // fnum tokens display a floating-point number
 func fnumToken(num float64, prec int) *token {
-	return &token{strconv.FormatFloat(num, 'E', -1, prec), 0}
+	return &token{strconv.FormatFloat(num, 'G', -1, prec), 0}
 }
 
 // Opcodes are mapped from uint16 because some of them are
