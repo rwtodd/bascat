@@ -178,8 +178,8 @@ object BasCat {
    // A main method to let us use BasCat from the command line.
    def main(args: Array[String]) = {
        import java.nio.file.{Files,Paths}
-       if (args.length == 2)
-          BasCat(Files.readAllBytes(Paths.get(args(1))), System.out) 
+       if (args.length == 1)
+          BasCat(Files.readAllBytes(Paths.get(args(0))), System.out) 
        else
           System.err.println("USAGE: bascat <filename>")
    }
