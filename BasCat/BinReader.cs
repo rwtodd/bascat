@@ -10,12 +10,14 @@ namespace BasCat
         private int idx;
         private byte[] buf;
         private readonly int last2;
+        private byte[] mbf;  // scratch space for use in floating-pt conversion
 
         public BinReader(byte[] buffer)
         {
             buf = buffer;
             idx = 0;
             last2 = buf.Length - 1;
+            mbf = new byte[8];
         }
 
         public bool EOF
@@ -45,98 +47,45 @@ namespace BasCat
 
         public Int16 ReadS16() => (Int16)ReadU16();
 
-        public Double ReadF32()
+        public Single ReadMBF32()
         {
-            if (idx > buf.Length - 4) { return 0.0; }
-            var bs0 = (Int32)buf[idx++];
-            var bs1 = (Int32)buf[idx++];
-            var bs2 = (Int32)buf[idx++];
-            var bs3 = (Int32)buf[idx++];
-            if (bs3 == 0) { return 0.0; }
+            mbf[0] = ReadByte();
+            mbf[1] = ReadByte();
+            mbf[2] = ReadByte();
+            mbf[3] = ReadByte();
+            if (mbf[3] == 0) return 0.0f;
 
-            var sign = new BigInteger(((0x80 & bs2) == 0) ? 1 : -1);
-            var exp = bs3 - 129;
-            var TWO = new BigInteger(2);
-            var expt = BigInteger.Pow(TWO, Math.Abs(exp));
-            // var scand = new BigInteger(bs0 | (bs1 << 8) | ((bs2 & 0x7f) << 16));
-            var scand = new BigInteger(bs0 | (bs1 << 8) | ((bs2 | 0x80) << 16));
-            var numer = sign * scand;
-            var denom = new BigInteger(0x800000L);
-            if (exp >= 0) { numer = numer * expt; } else { denom = denom * expt; }
-            return numer.DivideAndReturnDouble(denom);
-         }
+            byte sign = (byte)(mbf[2] & 0x80);
+            byte exp = (byte)(mbf[3] - 2);
+            mbf[3] = (byte)(sign | ((exp >> 1) & 0xff));
+            mbf[2] = (byte)((exp << 7) | (mbf[2] & 0x7F));
 
-    public Double ReadF64()
-    {
-        idx += 8;
-        return 0.0;
-    }
-}
-
-internal static class BigIntExtensions
-{
-    public static double DivideAndReturnDouble(this BigInteger x, BigInteger y)
-    {
-        // The Double value type represents a double-precision 64-bit number with
-        // values ranging from -1.79769313486232e308 to +1.79769313486232e308
-        // values that do not fit into this range are returned as +/-Infinity
-        if (SafeCastToDouble(x) && SafeCastToDouble(y))
-        {
-            return (Double)x / (Double)y;
+            if (!System.BitConverter.IsLittleEndian) System.Array.Reverse(mbf, 0, 4);
+            return System.BitConverter.ToSingle(mbf, 0);
         }
 
-        // kick it old-school and figure out the sign of the result
-        bool isNegativeResult = ((x.Sign < 0 && y.Sign > 0) || (x.Sign > 0 && y.Sign < 0));
-
-        // scale the numerator to preseve the fraction part through the integer division
-        BigInteger denormalized = (x * s_bnDoublePrecision) / y;
-        if (denormalized.IsZero)
+        public Double ReadMBF64()
         {
-            return isNegativeResult ? BitConverter.Int64BitsToDouble(unchecked((long)0x8000000000000000)) : 0d; // underflow to -+0
-        }
-
-        Double result = 0;
-        bool isDouble = false;
-        int scale = DoubleMaxScale;
-
-        while (scale > 0)
-        {
-            if (!isDouble)
+            for (int idx = 0; idx < 8; ++idx)
             {
-                if (SafeCastToDouble(denormalized))
-                {
-                    result = (Double)denormalized;
-                    isDouble = true;
-                }
-                else
-                {
-                    denormalized = denormalized / 10;
-                }
+                mbf[idx] = ReadByte();
             }
-            result = result / 10;
-            scale--;
-        }
+            if (mbf[7] == 0) return 0.0;
 
-        if (!isDouble)
-        {
-            return isNegativeResult ? Double.NegativeInfinity : Double.PositiveInfinity;
-        }
-        else
-        {
-            return result;
+            Byte sign = (byte)(mbf[6] & 0x80);  // save off the sign
+            mbf[6] &= 0x7f;  // erase the sign bit
+            Int16 exp = (Int16)(mbf[7] - 129 + 1023);
+
+            // shift over the significand by 3 bits (55 in ieee, 58 in mbf)
+            for (int idx = 0; idx < 7; ++idx)
+            {
+                mbf[idx] = (byte)((mbf[idx] >> 3) | (mbf[idx + 1] << 5));
+            }
+
+            if (!System.BitConverter.IsLittleEndian) System.Array.Reverse(mbf);
+            return System.BitConverter.ToDouble(mbf, 0);
         }
 
     }
 
-    private const int DoubleMaxScale = 308;
-    private static readonly BigInteger s_bnDoublePrecision = BigInteger.Pow(10, DoubleMaxScale);
-    private static readonly BigInteger s_bnDoubleMaxValue = (BigInteger)Double.MaxValue;
-    private static readonly BigInteger s_bnDoubleMinValue = (BigInteger)Double.MinValue;
-
-    private static bool SafeCastToDouble(BigInteger value)
-    {
-        return s_bnDoubleMinValue <= value && value <= s_bnDoubleMaxValue;
-    }
-
-}
 }

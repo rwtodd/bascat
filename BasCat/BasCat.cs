@@ -48,8 +48,8 @@ namespace BasCat
                 case var x when (x >= 0x11 && x <= 0x1B):
                     tw.Write(Tokens[x - 0x11]); break;
                 case 0x1C: tw.Write(rdr.ReadS16()); break;
-                case 0x1D: tw.Write("{0:G7}",rdr.ReadF32()); break;
-                case 0x1F: tw.Write("{0:G15}",rdr.ReadF64()); break;
+                case 0x1D: tw.Write("{0:G}",rdr.ReadMBF32()); break;
+                case 0x1F: tw.Write("{0:G}",rdr.ReadMBF64()); break;
                 case var x when (x >= 0x81 && x <= 0xF4):
                     tw.Write(Tokens[x - 118]); break;
                 case var x when (x >= 0xFD81 && x <= 0xFD8B):
