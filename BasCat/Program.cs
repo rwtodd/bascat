@@ -1,12 +1,14 @@
 ﻿using System;
+using System.IO;
 
 namespace BasCat
 {
+
     class Program
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Hello World!");
+            new BasCat(File.ReadAllBytes(args[0])).PrintAllLines(Console.Out);            
         }
     }
 }

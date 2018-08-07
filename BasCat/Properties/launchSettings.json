@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "BasCat": {
+      "commandName": "Project",
+      "commandLineArgs": "TOUR.GWBAS",
+      "workingDirectory": "C:\\Users\\richa\\Documents\\code\\bascat"
+    }
+  }
+}
