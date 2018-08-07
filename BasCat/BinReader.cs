@@ -82,10 +82,13 @@ namespace BasCat
                 mbf[idx] = (byte)((mbf[idx] >> 3) | (mbf[idx + 1] << 5));
             }
 
+            // now fix up the top bytes...
+            // exp 16 bits == FEDCB(A987654)(3210)
+            mbf[7] = (byte)(sign | ((exp >> 4) & 0x7f));
+            mbf[6] = (byte)((mbf[6] & 0x0F) | ((exp & 0x0f) << 4));
+
             if (!System.BitConverter.IsLittleEndian) System.Array.Reverse(mbf);
             return System.BitConverter.ToDouble(mbf, 0);
         }
-
     }
-
 }
