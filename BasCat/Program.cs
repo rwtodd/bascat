@@ -4,7 +4,7 @@ using System.IO;
 namespace BasCat
 {
 
-    class Program
+    internal static class Program
     {
         static void Main(string[] args)
         {

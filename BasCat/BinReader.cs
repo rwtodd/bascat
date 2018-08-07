@@ -2,14 +2,14 @@
 
 namespace BasCat
 {
-    class BinReader
+    sealed class BinReader
     {
         private int idx;
-        private byte[] buf;
+        private readonly byte[] buf;
         private readonly int last2;
         private byte[] mbf;  // scratch space for use in floating-pt conversion
 
-        public BinReader(byte[] buffer)
+        internal BinReader(byte[] buffer)
         {
             buf = buffer;
             idx = 0;
@@ -17,34 +17,31 @@ namespace BasCat
             mbf = new byte[8];
         }
 
-        public bool EOF
-        {
-            get => idx >= buf.Length;
-        }
+        internal bool EOF => idx >= buf.Length;
 
-        public byte ReadByte()
+        internal byte ReadByte()
         {
             return (idx < buf.Length) ? buf[idx++] : (byte)0;
         }
 
-        public bool Peek(byte val) => !EOF && buf[idx] == val;
-        public bool Peek2(byte v1, byte v2) => (idx < last2) && (buf[idx] == v1) && (buf[idx + 1] == v2);
+        internal bool Peek(byte val) => !EOF && buf[idx] == val;
+        internal bool Peek2(byte v1, byte v2) => (idx < last2) && (buf[idx] == v1) && (buf[idx + 1] == v2);
 
-        public void Skip(int offs)
+        internal void Skip(int offs)
         {
             idx += offs;
         }
 
-        public UInt16 ReadU16()
+        internal UInt16 ReadU16()
         {
             var ans = (idx < last2) ? (buf[idx] | (buf[idx + 1] << 8)) : 0;
             idx += 2;
             return (UInt16)ans;
         }
 
-        public Int16 ReadS16() => (Int16)ReadU16();
+        internal Int16 ReadS16() => (Int16)ReadU16();
 
-        public Single ReadMBF32()
+        internal Single ReadMBF32()
         {
             mbf[0] = ReadByte();
             mbf[1] = ReadByte();
@@ -61,7 +58,7 @@ namespace BasCat
             return System.BitConverter.ToSingle(mbf, 0);
         }
 
-        public Double ReadMBF64()
+        internal Double ReadMBF64()
         {
             for (int idx = 0; idx < 8; ++idx)
             {

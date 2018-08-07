@@ -3,11 +3,11 @@ using System.Text;
 
 namespace BasCat
 {
-    public class BasCat
+    internal sealed class BasCat
     {
-        private BinReader rdr;
+        private readonly BinReader rdr;
 
-        public BasCat(byte[] buf)
+        internal BasCat(byte[] buf)
         {
             rdr = new BinReader(buf);
 
@@ -16,14 +16,14 @@ namespace BasCat
                 case 0xff:
                     break;
                 case 0xfe:
-                    Unprotector.decode(buf);
+                    Unprotector.Decode(buf);
                     break;
                 default:
                     throw new NotSupportedException("Not a recognizeable GW-BASIC file!");
             }
         }
 
-        bool PrintToken(System.IO.TextWriter tw)
+        private bool PrintToken(System.IO.TextWriter tw)
         {
             Int32 b = rdr.ReadByte();
             if (b >= 0xfd) b = (b << 8) | (rdr.ReadByte());
@@ -64,7 +64,7 @@ namespace BasCat
             return hasMore;
         }
 
-        public void PrintAllLines(System.IO.TextWriter tw)
+        internal void PrintAllLines(System.IO.TextWriter tw)
         {
             var sb = new StringBuilder(120);
             var sw = new System.IO.StringWriter(sb);
@@ -79,7 +79,7 @@ namespace BasCat
             }
         }
 
-        static String[] Tokens =
+        private static readonly String[] Tokens =
         {
            /* 0x11 - 0x1B */
            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
