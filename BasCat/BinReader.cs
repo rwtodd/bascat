@@ -25,7 +25,7 @@ namespace BasCat
         }
 
         internal bool Peek(byte val) => !EOF && buf[idx] == val;
-        internal bool Peek2(byte v1, byte v2) => (idx < last2) && (buf[idx] == v1) && (buf[idx + 1] == v2);
+        internal bool Peek(byte v1, byte v2) => (idx < last2) && (buf[idx] == v1) && (buf[idx + 1] == v2);
 
         internal void Skip(int offs)
         {

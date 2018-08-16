@@ -33,7 +33,7 @@ namespace BasCat
             {
                 case 0x3A when rdr.Peek(0xA1):
                     tw.Write("ELSE"); rdr.Skip(1); break;
-                case 0x3A when rdr.Peek2(0x8F,0xD9):
+                case 0x3A when rdr.Peek(0x8F,0xD9):
                     tw.Write('\''); rdr.Skip(2); break;
                 case 0xB1 when rdr.Peek(0xE9):
                     tw.Write("WHILE"); rdr.Skip(1); break;
