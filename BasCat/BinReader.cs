@@ -18,19 +18,10 @@ namespace BasCat
         }
 
         internal bool EOF => idx >= buf.Length;
-
-        internal byte ReadByte()
-        {
-            return (idx < buf.Length) ? buf[idx++] : (byte)0;
-        }
-
+        internal byte ReadByte() => (idx < buf.Length) ? buf[idx++] : (byte)0;
         internal bool Peek(byte val) => !EOF && buf[idx] == val;
         internal bool Peek(byte v1, byte v2) => (idx < last2) && (buf[idx] == v1) && (buf[idx + 1] == v2);
-
-        internal void Skip(int offs)
-        {
-            idx += offs;
-        }
+        internal void Skip(int offs) { idx += offs; }
 
         internal UInt16 ReadU16()
         {
