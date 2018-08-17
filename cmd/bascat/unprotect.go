@@ -1,7 +1,5 @@
 package main
 
-import "io"
-
 // a decrypter for protected BAS files.
 // I found the algorithm in a python program ("PC-BASIC"),
 //    (  http://sourceforge.net/p/pcbasic/wiki/Home/  )
@@ -16,26 +14,27 @@ import "io"
 var key_13 = [...]byte{0xA9, 0x84, 0x8D, 0xCD, 0x75, 0x83, 0x43, 0x63, 0x24, 0x83, 0x19, 0xF7, 0x9A}
 var key_11 = [...]byte{0x1E, 0x1D, 0xC4, 0x77, 0x26, 0x97, 0xE0, 0x74, 0x59, 0x88, 0x7C}
 
-type unprotector struct {
-	src          io.ByteReader
-	idx13, idx11 int
-}
+func unprotect(bs []byte) {
+	var idx11, idx13 byte
+	bs[0] = 0xff // no need to unprotect again
+	bs = bs[1:]
 
-func (u *unprotector) ReadByte() (byte, error) {
-	ans, err := u.src.ReadByte()
-	ans -= 11 - byte(u.idx11)
-	ans ^= key_11[u.idx11]
-	ans ^= key_13[u.idx13]
-	ans += 13 - byte(u.idx13)
+	for i, v := range bs {
 
-	u.idx13++
-	if u.idx13 == 13 {
-		u.idx13 = 0
+		v -= 11 - idx11
+		v ^= key_11[idx11]
+		v ^= key_13[idx13]
+		v += 13 - idx13
+		bs[i] = v
+
+		idx13++
+		if idx13 == 13 {
+			idx13 = 0
+		}
+		idx11++
+		if idx11 == 11 {
+			idx11 = 0
+		}
+
 	}
-	u.idx11++
-	if u.idx11 == 11 {
-		u.idx11 = 0
-	}
-
-	return ans, err
 }

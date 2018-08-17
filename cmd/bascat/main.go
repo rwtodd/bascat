@@ -1,203 +1,125 @@
 package main
 
 import (
-	"bufio"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"os"
-
-	"github.com/rwtodd/Go.AppUtil/errs"
+	"strconv"
+	"strings"
 )
-
-const (
-	first_byte  = 0xFF // first byte of the file (unencrypted)
-	first_bcrpt = 0xFE // first byte of the file (encrypted)
-
-	end_of_program = 0 // indicates there are no more lines
-	end_of_line    = 0 // indicates the end of a line
-
-	lnumber_prefix = 0x0E // line number prefix, unsigned
-
-	octal_prefix  = 0x0B // comes before an octal constant, signed
-	hex_prefix    = 0x0C // comes before a hex constant, signed
-	first_ten     = 0x11 // 0x11 through 0x1B are the constants 0 to 10
-	last_ten      = 0x1B // 0x11 through 0x1B are the constants 0 to 10
-	int_prefix_1b = 0x0F // one-byte int prefix, 11 - 255
-	int_prefix_2b = 0x1C // two-byte int prefix, signed
-
-	float_prefix_4b = 0x1D // four-byte int prefix
-	float_prefix_8b = 0x1F // eight-byte float prefix
-)
-
-// decoder decides whether to use the 'unprotect' decryption or not.
-func decoder(in io.ByteReader) (bd io.ByteReader, err error) {
-	// check the first byte
-	b, err := in.ReadByte()
-	switch b {
-	case first_byte:
-		bd = in
-	case first_bcrpt:
-		bd = &unprotector{src: in}
-	default:
-		err = errs.First("Decoding",
-			err,
-			fmt.Errorf("This file is not a tokenized BAS file! First byte: <%02x>", b))
-	}
-	return
-}
-
-// readLineNum reads the next line number from the stream. It
-// detects EOF via a "next line pointer" of 0.
-func readLineNum(in io.ByteReader) (uint16, error) {
-	// check the "next line" pointer for 0, return EOF if
-	// we find it.
-	ptr, err := readUint16(in)
-	if ptr == 0 {
-		return ptr, io.EOF
-	} else if err != nil {
-		return ptr, err
-	}
-
-	// return the line number...
-	return readUint16(in)
-}
 
 // nextToken decodes the next token from the input.
-func nextToken(in io.ByteReader) (ans *token) {
-	tok, _ := in.ReadByte()
-
-	// it might represent itself
-	if tok >= 0x20 && tok <= 0x7E {
-		ans = literalToken(string(tok))
-		return
+func nextToken(b *buffer, sb *strings.Builder) (hasMore bool) {
+	tok := int(b.readU8())
+	if tok >= 0xfd {
+		tok = (tok << 8) | int(b.readU8())
 	}
+	hasMore = true
 
-	// it might be a hard-coded low number
-	if tok >= first_ten && tok <= last_ten {
-		ans = numToken((int64(tok) - first_ten), 10)
-		return
-	}
+	switch {
+	// it might be one of three special patterns
+	case tok == 0x3A && b.peek(0xA1):
+		sb.WriteString("ELSE")
+		b.skip(1)
+	case tok == 0x3A && b.peek2(0x8F, 0xD9):
+		sb.WriteString("'")
+		b.skip(2)
+	case tok == 0xB1 && b.peek(0xE9):
+		sb.WriteString("WHILE")
+		b.skip(1)
 
-	// it might require more bytes read
-	switch tok {
-	case lnumber_prefix:
-		lnum, _ := readUint16(in)
-		ans = numToken(int64(lnum), 10)
-	case octal_prefix:
-		snum, _ := readInt16(in)
-		ans = numToken(int64(snum), 8)
-	case hex_prefix:
-		snum, _ := readInt16(in)
-		ans = numToken(int64(snum), 16)
-	case int_prefix_2b:
-		snum, _ := readInt16(in)
-		ans = numToken(int64(snum), 10)
-	case int_prefix_1b:
-		bnum, _ := in.ReadByte()
-		ans = numToken(int64(bnum), 10)
-	case float_prefix_4b:
-		fnum, _ := readF32(in)
-		ans = fnumToken(fnum, 32)
-	case float_prefix_8b:
-		fnum, _ := readF64(in)
-		ans = fnumToken(fnum, 64)
-	case 0xfd, 0xfe, 0xff:
-		second, _ := in.ReadByte()
-		ans = opcodeToken((uint16(tok) << 8) | uint16(second))
-	case end_of_line:
-		ans = nil
+		// it might be the end of line
+	case tok == 0:
+		hasMore = false
+
+		// it could be a formatted number
+	case tok == 0x0B:
+		sb.WriteString("&O" + strconv.FormatInt(int64(b.readInt16()), 8))
+	case tok == 0x0C:
+		sb.WriteString("&H" + strconv.FormatInt(int64(b.readInt16()), 16))
+	case tok == 0x0E:
+		sb.WriteString(strconv.Itoa(int(b.readUInt16())))
+	case tok == 0x0F:
+		sb.WriteString(strconv.Itoa(int(b.readU8())))
+	case tok == 0x1C:
+		sb.WriteString(strconv.Itoa(int(b.readInt16())))
+	case tok == 0x1D:
+		sb.WriteString(strconv.FormatFloat(b.readF32(), 'G', -1, 32))
+	case tok == 0x1F:
+		sb.WriteString(strconv.FormatFloat(b.readF64(), 'G', -1, 64))
+
+		// it might represent itself
+	case tok >= 0x20 && tok <= 0x7E:
+		sb.WriteByte(byte(tok))
+
+	// it might be a predefined token
+	case tok >= 0x11 && tok <= 0x1B:
+		sb.WriteString(tokens[tok-0x11])
+	case tok >= 0x81 && tok <= 0xF4:
+		sb.WriteString(tokens[tok-118])
+	case tok >= 0xFD81 && tok <= 0xFD8B:
+		sb.WriteString(tokens[tok-64770])
+	case tok >= 0xFE81 && tok <= 0xFEA8:
+		sb.WriteString(tokens[tok-65015])
+	case tok >= 0xFF81 && tok <= 0xFFA5:
+		sb.WriteString(tokens[tok-65231])
+
+	// or... unrecognized!
 	default:
-		ans = opcodeToken(uint16(tok))
+		sb.WriteString("<UNK 0x")
+		sb.WriteString(strconv.FormatInt(int64(tok), 16))
+		sb.WriteString("!>")
 	}
 
 	return
-}
-
-// outputFiltered filters the tokens based on a few patterns:
-// 3A A1     --> A1   ":ELSE"  --> "ELSE"
-// 3A 8F D9  --> D9   ":REM'"  --> "'"
-// B1 E9     --> B1   "WHILE+" --> "WHILE"
-func outputFiltered(toks []*token) {
-	idx, ln := 0, len(toks)
-	lookingAt := func(tgt ...uint16) bool {
-		if len(tgt) > (ln - idx) {
-			return false
-		}
-		for i, v := range tgt {
-			if toks[idx+i].opcode != v {
-				return false
-			}
-		}
-		return true
-	}
-
-	for idx < ln {
-		if lookingAt(0x3A, 0xA1) {
-			idx++
-		} else if lookingAt(0x3A, 0x8F, 0xD9) {
-			idx += 2
-		} else if lookingAt(0xB1, 0xE9) {
-			toks[idx+1] = toks[idx]
-			idx++
-		}
-		fmt.Print(toks[idx].str)
-		idx++
-	}
-
-	fmt.Println("")
 }
 
 // cat is the high-level driver of the program (named after the
 // UNIX tool.  It pulls in a line of tokens at a time, and sends
 // them to be output.
-func cat(in io.ByteReader) {
-	for {
-		line, err := readLineNum(in)
-		if err == io.EOF {
+func cat(b *buffer) {
+	var sb strings.Builder
+	for !b.eof() {
+		if b.readUInt16() == 0 {
 			break
 		}
-		if err != nil {
-			fmt.Printf("\nERROR %s\n", err.Error())
-			os.Exit(1)
+		sb.WriteString(strconv.Itoa(int(b.readUInt16())))
+		sb.WriteString("  ")
+		for nextToken(b, &sb) { /* empty */
 		}
-
-		var tok *token = numToken(int64(line), 10)
-		var toks = append(make([]*token, 0, 20), tok)
-		tok = literalToken("  ")
-		for tok != nil {
-			toks = append(toks, tok)
-			tok = nextToken(in)
-		}
-
-		outputFiltered(toks)
+		fmt.Println(sb.String())
+		sb.Reset()
 	}
 }
 
 func main() {
-	var infl *os.File
+
+	var bytes []byte
+	var err error
 
 	switch len(os.Args) {
 	case 1:
-		infl = os.Stdin
-	case 2:
-		var err error
-		infl, err = os.Open(os.Args[1])
+		bytes, err = ioutil.ReadAll(os.Stdin)
 		if err != nil {
-			fmt.Printf("Can't open <%s>!: %s\n", os.Args[1], err.Error())
+			fmt.Fprintf(os.Stderr, "Can't read stdin!: %s\n", err.Error())
 			os.Exit(1)
 		}
-		defer infl.Close()
+	case 2:
+		bytes, err = ioutil.ReadFile(os.Args[1])
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Can't read <%s>!: %s\n", os.Args[1], err.Error())
+			os.Exit(1)
+		}
 	default:
 		fmt.Fprintf(os.Stderr, "Usage: bascat [file]\n")
 		os.Exit(2)
 	}
 
-	br := bufio.NewReader(infl)
-	input, err := decoder(br)
+	buff, err := newBuffer(bytes)
 	if err != nil {
-		fmt.Println(err)
-		return
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
 	}
 
-	cat(input)
+	cat(buff)
 }
