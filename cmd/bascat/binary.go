@@ -58,14 +58,20 @@ func (b *buffer) fillArray(bs []byte) {
 }
 
 func (b *buffer) readInt16() int16 {
-	bs0 := int16(b.readU8())
-	bs1 := int16(b.readU8())
-	return bs0 | (bs1 << 8)
+	var ans int16 = 0
+	if b.idx < b.last2 {
+		ans = int16(b.bytes[b.idx]) | (int16(b.bytes[b.idx+1]) << 8)
+	}
+	b.idx += 2
+	return ans
 }
 func (b *buffer) readUInt16() uint16 {
-	bs0 := uint16(b.readU8())
-	bs1 := uint16(b.readU8())
-	return bs0 | (bs1 << 8)
+	var ans uint16 = 0
+	if b.idx < b.last2 {
+		ans = uint16(b.bytes[b.idx]) | (uint16(b.bytes[b.idx+1]) << 8)
+	}
+	b.idx += 2
+	return ans
 }
 
 func (b *buffer) readF32() (out float64) {

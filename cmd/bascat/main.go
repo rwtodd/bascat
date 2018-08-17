@@ -1,15 +1,15 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
-	"strings"
 )
 
 // nextToken decodes the next token from the input.
-func nextToken(b *buffer, sb *strings.Builder) (hasMore bool) {
+func nextToken(b *buffer, sb *bytes.Buffer) (hasMore bool) {
 	tok := int(b.readU8())
 	if tok >= 0xfd {
 		tok = (tok << 8) | int(b.readU8())
@@ -30,6 +30,7 @@ func nextToken(b *buffer, sb *strings.Builder) (hasMore bool) {
 
 		// it might be the end of line
 	case tok == 0:
+		sb.WriteByte(byte('\n'))
 		hasMore = false
 
 		// it could be a formatted number
@@ -78,7 +79,7 @@ func nextToken(b *buffer, sb *strings.Builder) (hasMore bool) {
 // UNIX tool.  It pulls in a line of tokens at a time, and sends
 // them to be output.
 func cat(b *buffer) {
-	var sb strings.Builder
+	var sb bytes.Buffer
 	for !b.eof() {
 		if b.readUInt16() == 0 {
 			break
@@ -87,7 +88,7 @@ func cat(b *buffer) {
 		sb.WriteString("  ")
 		for nextToken(b, &sb) { /* empty */
 		}
-		fmt.Println(sb.String())
+		os.Stdout.Write(sb.Bytes())
 		sb.Reset()
 	}
 }
