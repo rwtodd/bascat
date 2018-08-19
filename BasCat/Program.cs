@@ -1,12 +1,13 @@
 ﻿using System;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace BasCat
 {
 
     internal static class Program
     {
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             if(args.Length != 1)
             {
@@ -17,7 +18,7 @@ namespace BasCat
                 Environment.Exit(-1);
             }
 
-            new BasCat(File.ReadAllBytes(args[0])).PrintAllLines(Console.Out);
+            await new BasCat(File.ReadAllBytes(args[0])).PrintAllLinesAsync(Console.Out);
         }
     }
 }

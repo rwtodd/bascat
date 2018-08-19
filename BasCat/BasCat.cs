@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace BasCat
 {
@@ -19,7 +20,7 @@ namespace BasCat
                     Unprotector.Decode(buf);
                     break;
                 default:
-                    throw new NotSupportedException("Not a recognizeable GW-BASIC file!");
+                    throw new FormatException("Not a recognizeable GW-BASIC file!");
             }
         }
 
@@ -64,19 +65,22 @@ namespace BasCat
             return hasMore;
         }
 
-        internal void PrintAllLines(System.IO.TextWriter tw)
+        internal async Task PrintAllLinesAsync(System.IO.TextWriter tw)
         {
             var sb = new StringBuilder(120);
             var sw = new System.IO.StringWriter(sb);
+            Task lineWrite = null;
             while (!rdr.EOF)
             {
                 if (rdr.ReadU16() == 0) break;  // 0 pointer == EOF
                 sw.Write(rdr.ReadU16());
                 sw.Write("  ");
                 while(PrintToken(sw)) {  /* nothing */ }
-                tw.Write(sw.ToString());
+                if(lineWrite != null) await lineWrite;
+                lineWrite = tw.WriteAsync(sw.ToString());
                 sb.Clear();
             }
+            await lineWrite;
         }
 
         private static readonly String[] Tokens =
