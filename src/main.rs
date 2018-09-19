@@ -1,6 +1,7 @@
 use std::env::args;
 use std::fs::File;
-use std::io::{self, BufReader,Error,ErrorKind, StdoutLock};
+use std::fmt::Write;
+use std::io::{self, Error, ErrorKind};
 use std::io::prelude::*;
 
 /// TOKENS contains string descriptions of the canned opcodes found
@@ -70,34 +71,24 @@ const KEY11 : [u8; 11] = [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C
 const KEY13 : [u8; 13] = [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A];
 // -- End of support data for the decrypting Iterator
 
-/// DecryptedBytes wraps a byte iterator for an encrypted GWBAS file, and 
-/// decrypts the data on the fly.
-struct DecryptedBytes<T>
-  where T: Iterator<Item=std::io::Result<u8>> {
-   unenc: T,
-   idx11: usize,
-   idx13: usize,
+fn decrypt_buffer(buf: &mut Vec<u8>) {
+  buf[0] = 0xff;
+  for i in 1..buf.len() {
+    let idx11 = (i - 1) % 11;
+    let idx13 = (i - 1) % 13;
+    buf[i] = ((buf[i] - (11 - idx11 as u8))  ^ 
+              (KEY11[idx11]) ^ 
+              (KEY13[idx13])) + (13 - idx13 as u8);
+  }
 }
 
-impl<T> Iterator for DecryptedBytes<T> 
-  where T: Iterator<Item=std::io::Result<u8>> {
-   type Item = std::io::Result<u8>;
-
-   fn next(&mut self) -> Option<std::io::Result<u8>> {
-      if let Some(Ok(x)) = self.unenc.next() {
-         let result = ((x - (11 - self.idx11 as u8))  ^ 
-                       (KEY11[self.idx11]) ^ 
-                       (KEY13[self.idx13])) + (13 - self.idx13 as u8);
-         self.idx11 = (self.idx11 + 1) % 11;
-         self.idx13 = (self.idx13 + 1) % 13;
-         Some(Ok(result))
-      } else {
-         Some(Ok(0u8)) 
-      }
-   }
+/// Bytes is just a way to track where we are in the buffer.
+/// Functions liek read_u8 use it, and return 0 past the end.
+/// For translating GW-BASIC, this is safe.
+struct Bytes {
+   buffer: Vec<u8>,
+   index: usize,
 }
-
-type Bytes = dyn Iterator<Item=std::io::Result<u8>>;
 
 /// Read a u8 from a byte iterator, returning 0u8 on all
 /// errors. Zeros are guaranteed to halt the processing,
@@ -105,7 +96,23 @@ type Bytes = dyn Iterator<Item=std::io::Result<u8>>;
 /// other than we don't report read errors to the user.
 #[inline]
 fn read_u8(b: &mut Bytes) -> u8 {
-  if let Some(Ok(x)) = b.next() { x } else { 0u8 }
+  if b.index < b.buffer.len() {
+     let ans = b.buffer[b.index];
+     b.index += 1;
+     ans 
+  } else { 0u8 }
+}
+
+/// Peek ahead a byte.
+fn peek_one(b: &Bytes, val: u8) -> bool {
+   (b.index < b.buffer.len()) && (b.buffer[b.index] == val)
+}
+
+/// Peek ahead two bytes.
+fn peek_two(b: &Bytes, val1: u8, val2: u8) -> bool {
+   (b.index+1 < b.buffer.len()) && 
+   (b.buffer[b.index] == val1) && 
+   (b.buffer[b.index+1] == val2)
 }
 
 /// Read a little-endian i16 from a byte iterator.
@@ -165,97 +172,66 @@ fn read_f64(b: &mut Bytes) -> f64 {
   }
 }
 
-/// Read the first byte of FNAME, and return an iterator
-/// over the bytes of the file, with a decrypting adapter
-/// if necessary.
-fn get_reader(fname: String) -> std::io::Result<Box<Bytes>> {
-    let file = File::open(fname)?;
-    let buf_reader = BufReader::new(file);
-    let mut bytes = buf_reader.bytes(); 
-    match bytes.next() {
-       Some(Ok(0xff)) => Ok(Box::new(bytes)),
-       Some(Ok(0xfe)) => Ok(Box::new(DecryptedBytes {unenc: bytes, idx11: 0, idx13: 0 })),
-       Some(Err(e))   => Err(e),
-       _              => Err(Error::new(ErrorKind::Other, "not a GWBAS file!")),
+/// Read the first byte of FNAME, and decrypt the file
+/// if necessary.  Then, return the unencrypted bytes. 
+fn load_buffer(fname: String) -> std::io::Result<Vec<u8>> {
+    let mut buffer = Vec::new();
+    let mut file = File::open(fname)?;
+    let _ = file.read_to_end(&mut buffer)?;
+    match buffer[0] {
+       0xff => Ok(buffer),
+       0xfe => {
+                 decrypt_buffer(&mut buffer);
+                 Ok(buffer)
+               },
+       _    => Err(Error::new(ErrorKind::Other, "not a GWBAS file!")),
     }
 }
 
-/// A Token is comprised of a numeric code and a String description.
-/// Vec's of these are produced from the input file, and the DESCs are
-/// output after a filtering process to clean out redundant tokens.
-struct Token  {
-  num: u16,
-  desc: String,
-}
+/// Generate a string from an opcode, which sometimes requires reading
+/// deeper into the file.
+fn parse_opcode(b: &mut Bytes, buf: &mut String) -> bool {
+    let num = read_u8(b) as u16;
+    let opcode = if num >= 0xfd {  (num << 8)|(read_u8(b) as u16) } else { num };
 
-impl Token {
-  /// Generate a token for an arbitrary string.
-  fn arbitrary(desc: String) -> Token {
-     Token { num: 1, desc: desc }
-  }
-
-  /// Generate a token from an opcode, which sometimes requires reading
-  /// deeper into the file.
-  fn from_opcode(num: u16, b: &mut Bytes) -> Token {
-    match num {
-      0xfd ..= 0xff => Token::from_opcode( (num << 8)|(read_u8(b) as u16), b ), 
-      0x00 => Token { num: num, desc: String::from("EOF") },
-      0x0B => Token { num: num, desc: format!("&O{:o}",read_i16(b)) },
-      0x0C => Token { num: num, desc: format!("&H{:x}",read_i16(b)) },
-      0x0E => Token { num: num, desc: format!("{}",read_u16(b)) },
-      0x0F => Token { num: num, desc: format!("{}",read_u8(b)) },
-      0x11 ..= 0x1B => Token { num: num, desc: String::from(TOKENS[(num - 0x11) as usize]) },
-      0x1C => Token { num: num, desc: format!("{}",read_i16(b)) },
-      0x1D => Token { num: num, desc: format!("{}",read_f32(b)) },
-      0x1F => Token { num: num, desc: format!("{}",read_f64(b)) },
-      0x20 ..= 0x7E => Token { num: num, desc: String::from_utf16(&[num]).unwrap() },
-      0x81 ..= 0xF4 => Token { num: num, desc: String::from(TOKENS[(num - 118) as usize]) },
-      0xFD81 ..= 0xFD8B => Token { num: num, desc: String::from(TOKENS[(num - 64770) as usize]) },
-      0xFE81 ..= 0xFEA8 => Token { num: num, desc: String::from(TOKENS[(num - 65015) as usize]) },
-      0xFF81 ..= 0xFFA5 => Token { num: num, desc: String::from(TOKENS[(num - 65231) as usize]) },
-      _ => Token { num: num, desc: format!("<UNK! {:X}>", num) },
+    if opcode == 0x3A && peek_one(b,0xA1) {
+        buf.push_str("ELSE");
+        b.index += 1;
+    } else if opcode == 0x3A && peek_two(b,0x8F,0xD9) {
+        buf.push_str("'");
+        b.index += 2;
+    } else if opcode == 0xB1 && peek_one(b,0xE9) {
+        buf.push_str("WHILE");
+        b.index += 1;
+    } else {
+      match opcode {
+        0x00 => writeln!(buf).unwrap(),
+        0x0B => write!(buf,"&O{:o}",read_i16(b)).unwrap(),
+        0x0C => write!(buf,"&i{:x}",read_i16(b)).unwrap(),
+        0x0E => write!(buf,"{}",read_u16(b)).unwrap(),
+        0x0F => write!(buf,"{}",read_u8(b)).unwrap(),
+        0x11 ..= 0x1B => buf.push_str(TOKENS[(opcode - 0x11) as usize]),
+        0x1C => write!(buf,"{}",read_i16(b)).unwrap(),
+        0x1D => write!(buf,"{}",read_f32(b)).unwrap(),
+        0x1F => write!(buf,"{}",read_f64(b)).unwrap(),
+        0x20 ..= 0x7E => buf.push(char::from(opcode as u8)),
+        0x81 ..= 0xF4 => buf.push_str(TOKENS[(num - 118) as usize]),
+        0xFD81 ..= 0xFD8B => buf.push_str(TOKENS[(opcode - 64770) as usize]),
+        0xFE81 ..= 0xFEA8 => buf.push_str(TOKENS[(opcode - 65015) as usize]),
+        0xFF81 ..= 0xFFA5 => buf.push_str(TOKENS[(opcode - 65231) as usize]),
+        _ => write!(buf,"<UNK! {:X}>", num).unwrap(),
+      }
    }
- }
+   opcode != 0
 }
 
 /// Fill BUF with tokens representing the next line of the GWBAS file.
 /// At the EOF, nothing will be added to BUF.
-fn read_line(b: &mut Bytes, buf: &mut Vec<Token>) {
-  if read_u16(b) != 0 {
-     buf.push( Token::arbitrary(format!("{}  ",read_u16(b))) );
-     loop {
-        let opcode = read_u8(b) as u16;
-        if opcode == 0 { break }
-        buf.push( Token::from_opcode(opcode, b) )
-     }
+fn read_line(basic: &mut Bytes, buf: &mut String) {
+  if read_u16(basic) != 0 {
+     write!(buf,"{}  ",read_u16(basic)).unwrap();
+     while parse_opcode(basic, buf) { /* nothing */ }
   }
-}
-
-/// Display a line of TOKS to DEST.  Three transormation rules
-/// clean up the display by eliminating redundant tokens.
-fn display_line(dest: &mut StdoutLock, toks: &mut Vec<Token>) -> std::io::Result<()> {
-   let mut idx :usize = 0;
-   let max = toks.len();
-   let looking_at = |v:&Vec<Token>,i:usize,t1,t2| -> bool { 
-      ((max-i)>1) && (v[i].num == t1) && (v[i+1].num == t2)
-   };
-   let looking_at3 = |v:&Vec<Token>,i:usize,t1,t2,t3| -> bool { 
-      ((max-i)>2) && (v[i].num == t1) && (v[i+1].num == t2) && (v[i+2].num == t3)
-   };
-   while idx < max {
-      // Transform 3A A1    ==> A1
-      //           3A 8F D9 ==> D9
-      //           B1 E9    ==> B1
-      if      looking_at(toks,idx,0x3A,0xA1) { idx += 1 }
-      else if looking_at3(toks,idx,0x3A,0x8F,0xD9) { idx += 2 } 
-      else if looking_at(toks,idx,0xB1,0xE9) {
-          toks[idx+1].desc = toks[idx].desc.clone();
-          idx += 1
-      } 
-      write!(dest, "{}",toks[idx].desc)?;
-      idx += 1;
-   }
-   return writeln!(dest);
 }
 
 fn main() -> std::io::Result<()> {
@@ -266,14 +242,16 @@ fn main() -> std::io::Result<()> {
        std::process::exit(1);
     }
     let fname = args.nth(1).unwrap();
-    let mut rdr = get_reader(fname)?;
+    let buffer = load_buffer(fname)?;
+    let mut basic = Bytes { buffer: buffer, index: 1 };
     let stdout = io::stdout();
     let mut handle = stdout.lock();
-    let mut line_buf = Vec::new();
+    let mut line_buf = String::with_capacity(256);
     loop {
-       read_line(&mut rdr, &mut line_buf);
+       use std::io::Write;
+       read_line(&mut basic, &mut line_buf);
        if line_buf.is_empty() { break }
-       display_line(&mut handle, &mut line_buf)?;
+       handle.write_all(line_buf.as_bytes())?;
        line_buf.clear(); 
     }
     Ok(()) 
