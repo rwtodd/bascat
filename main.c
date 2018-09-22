@@ -1,3 +1,6 @@
+/* Copyright (c) 2018 Richard Todd.  
+ * This program is GPLv2; see the LICENSE file */
+
 #include<stdint.h>
 #include<stdbool.h>
 #include<stdio.h>
