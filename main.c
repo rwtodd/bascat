@@ -10,7 +10,7 @@
 #include<unistd.h>
 #include<fcntl.h>
 
-const char* TOKENS[] = {
+static const char* TOKENS[] = {
     /* 0x11 - 0x1B */
     "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 
@@ -71,11 +71,11 @@ const char* TOKENS[] = {
 
 
 /* Some support data for the decrypting Iterator */
-const uint8_t KEY11[] = {0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C};
-const uint8_t KEY13[] = {0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A};
+static const uint8_t KEY11[] = {0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C};
+static const uint8_t KEY13[] = {0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A};
 
 /* Decrypt a buffer of data according to the algorithm I found online */
-void decrypt_buffer(uint8_t *buf, size_t len) {
+static void decrypt_buffer(uint8_t *buf, size_t len) {
   *buf++ = 0xff;  /* don't need to decrypt again */
   uint8_t *const end = buf + len;
   uint8_t idx11 = 0, idx13 = 0;
@@ -103,31 +103,31 @@ typedef struct {
  * errors. Zeros are guaranteed to halt the processing,
  * so there is no harm in this behavior in error cases
  * other than we don't report read errors to the user. */
-uint8_t read_u8(gwbas_data *const b) {
+static inline uint8_t read_u8(gwbas_data *const b) {
   return (b->index < b->len) ? b->buffer[b->index++] : 0;
 }
 
 /* Peek ahead a byte. */
-bool peek_one(gwbas_data *const b, uint8_t val) {
+static inline bool peek_one(gwbas_data *const b, uint8_t val) {
   return (b->index < b->len) && (b->buffer[b->index] == val);
 }
 
 /* Peek ahead two bytes. */
-bool peek_two(gwbas_data *const b, uint8_t val, uint8_t val2) {
+static inline bool peek_two(gwbas_data *const b, uint8_t val, uint8_t val2) {
   return (b->index+1 < b->len) && 
          (b->buffer[b->index] == val) && 
          (b->buffer[b->index+1] == val2);
 }
 
 /* Read a little-endian i16 from a byte iterator. */
-int16_t read_i16(gwbas_data *const b) {
+static int16_t read_i16(gwbas_data *const b) {
   int16_t b1 = read_u8(b);
   int16_t b2 = read_u8(b);
   return (b2 << 8) | b1 ;
 }
 
 /* Read a little-endian u16 from a byte iterator. */
-uint16_t read_u16(gwbas_data *const b) {
+static uint16_t read_u16(gwbas_data *const b) {
   uint16_t b1 = read_u8(b);
   uint16_t b2 = read_u8(b);
   return (b2 << 8) | b1 ;
@@ -135,7 +135,7 @@ uint16_t read_u16(gwbas_data *const b) {
 
 /* Read a MS MBF-style 32-bit float, and convert it to a modern IEEE float.
  * NB: This function assumes little endian outputs are appropriate. */
-float read_f32(gwbas_data *const b) {
+static float read_f32(gwbas_data *const b) {
   union { 
 	float answer;
     uint8_t bs[4];
@@ -157,7 +157,7 @@ float read_f32(gwbas_data *const b) {
 
 /* Read a MS MBF-style 64-bit float, and convert it to a modern IEEE double.
  * NB: This function assumes little endian outputs are appropriate. */
-double read_f64(gwbas_data *const b) {
+static double read_f64(gwbas_data *const b) {
   union { 
 	double answer;
     uint8_t bs[8];
@@ -188,7 +188,7 @@ double read_f64(gwbas_data *const b) {
  * N.B: we just forget about the fd, and never close the file
  * or unmap the memory since this program exits right after
  * finishing anyway. */
-bool load_buffer(gwbas_data *const b, const char *const fname) {
+static bool load_buffer(gwbas_data *const b, const char *const fname) {
     struct stat sb;
     int fd = open(fname, O_RDONLY);
     if(fd == -1) return false;
@@ -214,7 +214,7 @@ bool load_buffer(gwbas_data *const b, const char *const fname) {
 
 /// Generate a string from an opcode, which sometimes requires reading
 /// deeper into the file.
-bool parse_opcode(gwbas_data *const b) {
+static bool parse_opcode(gwbas_data *const b) {
     uint16_t opcode = read_u8(b);
     if(opcode >= 0xfd) { opcode = (opcode << 8)|read_u8(b); }
 
@@ -255,7 +255,7 @@ bool parse_opcode(gwbas_data *const b) {
 
 /* Print tokens representing the next line of the GWBAS file.
  * At the EOF just return FALSE */
-bool read_line(gwbas_data *const b) {
+static bool read_line(gwbas_data *const b) {
   if(read_u16(b) == 0) return false;
   printf("%d  ",read_u16(b));
   while(parse_opcode(b)) { /* nothing */ }
