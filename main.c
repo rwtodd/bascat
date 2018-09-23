@@ -212,8 +212,8 @@ static bool load_buffer(gwbas_data *const b, const char *const fname) {
     return true;
 }
 
-/// Generate a string from an opcode, which sometimes requires reading
-/// deeper into the file.
+/* Display a string for the next opcode, which sometimes requires reading
+ * deeper into the file. */
 static bool parse_opcode(gwbas_data *const b) {
     uint16_t opcode = read_u8(b);
     if(opcode >= 0xfd) { opcode = (opcode << 8)|read_u8(b); }
