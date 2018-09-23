@@ -7,6 +7,19 @@ format, but you'd need a working GWBASIC/BASICA to see the source.
 
 This is a C (UNIX) version.  I have implemented the program in many languages before.
 
+## Building/Installing
+
+To install it to `/usr/local`:
+
+    make && sudo make install
+
+To install somewhere else:
+
+    make PREFIX=/wherever/you/like install
+
+The makefile is very straightforward to edit to your liking if you want
+something more complicated.
+
 ## Decryption
 
 It was possible to save your file encrypted in GW-BASIC, and I found the decryption
