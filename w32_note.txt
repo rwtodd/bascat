@@ -1,0 +1,38 @@
+I also made a win32 version, which only needed changes 
+for the mmap() part in load_buffer().  It's not important
+enough to me to put in #ifdefs or otherwise make the project
+cross-platform, but I saved the modified function here
+for reference.
+
+Here is the modified function:
+
+~~~~~~~~
+
+/* Read the first byte of FNAME, and decrypt the file
+ * if necessary.  Then, return the unencrypted bytes.
+ * N.B: we just forget about the fd, and never close the file
+ * or unmap the memory since this program exits right after
+ * finishing anyway. */
+static bool load_buffer(gwbas_data *const b, LPCWSTR fname) {
+	b->index = 1;
+	HANDLE h = CreateFile(fname, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+	if (h == INVALID_HANDLE_VALUE) return false;
+	DWORD sz = GetFileSize(h, NULL);
+	b->len = sz;
+	HANDLE hmap = CreateFileMapping(h, NULL, PAGE_READONLY, 0, sz, NULL);
+	if (hmap == INVALID_HANDLE_VALUE) return false;
+	b->buffer = (uint8_t*)MapViewOfFile(hmap, FILE_MAP_COPY, 0, 0, b->len);
+	if (b->buffer == NULL) {
+		return false;
+	}
+
+	/* decrypt b if necessary, and detect a bad 1st byte */
+	switch (b->buffer[0]) {
+	case 0xff: break;
+	case 0xfe: decrypt_buffer(b->buffer, b->len);
+		break;
+	default:   return false;
+	}
+	return true;
+}
+
