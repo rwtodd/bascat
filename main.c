@@ -70,12 +70,10 @@ static const char* TOKENS[] = {
 };
 
 
-/* Some support data for the decrypting Iterator */
-static const uint8_t KEY11[] = {0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C};
-static const uint8_t KEY13[] = {0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A};
-
 /* Decrypt a buffer of data according to the algorithm I found online */
 static void decrypt_buffer(uint8_t *buf, size_t len) {
+  static const uint8_t KEY11[] = {0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C};
+  static const uint8_t KEY13[] = {0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A};
   *buf++ = 0xff;  /* don't need to decrypt again */
   uint8_t *const end = buf + len;
   uint8_t idx11 = 0, idx13 = 0;
@@ -84,8 +82,8 @@ static void decrypt_buffer(uint8_t *buf, size_t len) {
               (KEY11[idx11]) ^ 
               (KEY13[idx13])) + (13 - idx13);
     ++buf;
-    if (++idx11 == 11) idx11 == 0;
-    if (++idx13 == 13) idx13 == 0;
+    if (++idx11 == 11) idx11 = 0;
+    if (++idx13 == 13) idx13 = 0;
   }
 }
 
