@@ -1,5 +1,7 @@
 bascat
+*~
 *.o
+tags
 .deps/
 Makefile
 Makefile.in

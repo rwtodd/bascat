@@ -1,4 +1,5 @@
                              ==[ bascat ]==
+-------------------------------------
 
 A c (unix) program to decode GW-BASIC/BASICA tokenized files.
 
@@ -21,3 +22,8 @@ from the repository, you'll need to run:
 
 first to get all the infrastructure in place.
 
+                            ==[ Formatting ]==
+
+I use GNU indent:
+
+    indent main.c --no-tabs
