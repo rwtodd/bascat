@@ -1,0 +1,53 @@
+\input texinfo
+@include version.texi
+@settitle BasCat 1.0
+@setfilename bascat.info
+
+@dircategory General Commands
+@direntry
+* bascat: (bascat).   Decode GW-BASiC/BASICA files.
+@end direntry
+
+@copying
+
+Copyright @copyright{} 2018 Richard Todd
+@end copying
+
+@titlepage
+@title BasCat
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@c Output the table of the contents at the beginning.
+@contents
+
+@ifnottex
+@node Top
+@top BasCat 
+
+This manual is for BasCat
+(version @value{VERSION}, @value{UPDATED}).
+@end ifnottex
+
+BasCat reads @file{.BAS} files saved in the default binary format by
+@sc{GW-BASIC} and @sc{BASICA}, outputting plain text. This allows the code to
+be studied or ported without needing to run the interpreters in a virtual
+machine.  Run the program like so: 
+
+@example
+bascat @file{<filename>}
+@end example
+
+It was possible to save tokenized files encrypted, though I don't have any
+actual examples of encrypted files. The program will attempt to decode an
+encrypted file via an algorithm I found in the 
+@uref{http://sourceforge.net/p/pcbasic/wiki/Home/, PC-BASIC project}.
+However, since I don't have any protected @file{.BAS} files, so I have not
+tested that code.
+
+A reference for the @sc{GW-BASIC} tokens can be found here: 
+@uref{http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html}.
+
+@bye
