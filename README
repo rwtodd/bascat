@@ -14,5 +14,10 @@ simple as:
 
     ./configure && make && sudo make install 
 
-... with all the standard options available.
+if you download a distribution package.  If you are checking out the code
+from the repository, you'll need to run:
+
+    autoreconf -iv
+
+first to get all the infrastructure in place.
 
