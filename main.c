@@ -10,6 +10,7 @@
 #include<sys/stat.h>
 #include<unistd.h>
 #include<fcntl.h>
+#include "config.h"
 
 static const char *TOKENS[] = {
   /* 0x11 - 0x1B */
@@ -337,7 +338,9 @@ main (int argc, char **argv)
 {
   if (argc != 2)
     {
-      fprintf (stderr, "Usage: %s <gwbas_data file>\n", argv[0]);
+      fprintf (stderr,
+               "This is " PACKAGE_NAME ", version " PACKAGE_VERSION
+               ".\n\nUsage: %s <gwbas_data file>\n", argv[0]);
       return 1;
     }
   gwbas_data bas;
