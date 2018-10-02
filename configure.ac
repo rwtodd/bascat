@@ -27,5 +27,5 @@ AC_TYPE_UINT8_T
 # Checks for library functions.
 AC_FUNC_MMAP
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile tests/Makefile])
 AC_OUTPUT

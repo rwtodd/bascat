@@ -24,3 +24,7 @@ stamp-h1
 stamp-vti
 texinfo.tex
 version.texi
+/*.tar.gz
+/test-driver
+/tests/*.log
+/tests/*.trs
