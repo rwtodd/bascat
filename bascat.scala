@@ -10,6 +10,8 @@ package org.rwtodd.bascat
 // in a cycle across the bytes of the input.  Also, a reversed 11-index is subtracted
 // from the byte, while a reversed 13-index is added to the byte. By 'reversed', I
 // mean that as the 11-index goes from 0 to 10, the reversed index goes from 11 to 1.
+//
+// NOTE: this is a destructive operation on the original array
 object Unprotect {
   private val key13 = Array(0xA9, 0x84, 0x8D, 0xCD, 0x75, 0x83, 
                             0x43, 0x63, 0x24, 0x83, 0x19, 0xF7, 0x9A)
@@ -19,9 +21,9 @@ object Unprotect {
   def apply(buf: Array[Byte]) = {
     var idx13 = 0
     var idx11 = 0
- 
+
     buf(0) = 0xff.toByte  // mark the buffer as unprotected
-    
+
     for( idx <- 1 until buf.length ) {
       val decoded = (buf(idx) - (11 - idx11) ^ key11(idx11) ^ key13(idx13)) + 
                       (13 - idx13) 
@@ -33,158 +35,170 @@ object Unprotect {
   }
 }
 
-// A class that knows how to pull various binary data bits out of an array of Byte.
-class BinReader(buf: Array[Byte]) {
+case class StreamState[A](run: Stream[Byte] => (A, Stream[Byte])) {
+  def map[B] (f: A => B): StreamState[B] = StreamState (s1 => {
+      val (a, s2) = run (s1)
+      (f (a), s2)
+  })
+
+  def flatMap[B] (f: A => StreamState[B]): StreamState[B] = StreamState (s1 => {
+      val (a, s2) = run (s1)
+      f (a) run s2
+  })
+}
+
+object StreamState {
   import java.math.{BigDecimal,MathContext}
 
-  private var idx = 0
-  private val last2 = buf.length - 1
-
-  def atEOF = idx >= buf.length
-  def peek(v: Byte) = !atEOF && buf(idx) == v
-  def peek2(v1: Byte, v2: Byte) = (idx < last2) && buf(idx) == v1 && buf(idx+1) == v2
-  def skip(amt: Int) = { idx += amt }
-  def reset() = { idx = 1 }
-
-  def readByte(): Int = {
-    val ans = if (idx < buf.length) (buf(idx) & 0xFF) else 0
-    idx += 1
-    ans
-  }
-
-  def readU16(): Int = {
-     val ans = if (idx < last2) ( (buf(idx) & 0xFF) | ((buf(idx+1) & 0xFF) << 8) ) else 0
-     idx += 2
-     ans
-  }
-
-  def readS16(): Int = readU16().toShort.toInt
+  // These methods read (or peek at) the data at the head of the state
+  val peekByte = StreamState( s => (s.head & 0xff, s) )
+  val peekU16BigEndian = StreamState( s => (((s(0) & 0xff) << 8)|(s(1) & 0xff), s) )
+  val readByte = StreamState( s => (s.head & 0xff, s.tail) )
+  def readBytes(n: Int) = StreamState( s => (s.take(n).toArray, s.drop(n)) )
+  val readU16 = for { bs <- readBytes(2) } yield ((bs(1) & 0xff) << 8)|(bs(0) & 0xff)
+  val readS16 = readU16 map { _.toShort.toInt }
+  val readU16BigEndian = for { bs <- readBytes(2) } yield ((bs(0) & 0xff) << 8)|(bs(1) & 0xff)
+  def skip(n: Int) = StreamState(s => (Unit, s drop n))
 
   // Read a MBF32 floating-point number and build a double out of it.  NB: we don't depend on IEEE float formats, 
   // using BigDecimals instead.
-  def readF32(): Double = { 
-     val bs0 = readByte() 
-     val bs1 = readByte() 
-     val bs2 = readByte() 
-     val bs3 = readByte() 
-     if (bs3 == 0) return 0.0
-
-     val sign = new BigDecimal( if ((0x80 & bs2) == 0)  1 else -1, MathContext.UNLIMITED )
-     val exp = bs3 - 129
-     val TWO = new BigDecimal(2,MathContext.UNLIMITED)
-     val expt = if (exp < 0) BigDecimal.ONE.divide(TWO.pow(-exp,MathContext.UNLIMITED),MathContext.UNLIMITED) else TWO.pow(exp,MathContext.UNLIMITED)
-     val scand = new BigDecimal( bs0 | (bs1 << 8) | ((bs2 & 0x7f) << 16), MathContext.UNLIMITED )
-     sign.multiply(scand.divide(new BigDecimal(0x800000L,MathContext.UNLIMITED)).add(BigDecimal.ONE)).multiply(expt).doubleValue()
-  }
+  val readF32 = for { 
+        bs <- readBytes(4)
+     } yield {
+        if (bs(3) == 0) 0.0 else {
+          val sign = new BigDecimal( if ((0x80 & bs(2)) == 0)  1 else -1, MathContext.UNLIMITED )
+          val exp = (bs(3) & 0xff) - 129
+          val TWO = new BigDecimal(2,MathContext.UNLIMITED)
+          val expt = if (exp < 0) BigDecimal.ONE.divide(TWO.pow(-exp,MathContext.UNLIMITED),MathContext.UNLIMITED) else TWO.pow(exp,MathContext.UNLIMITED)
+          val scand = new BigDecimal( (bs(0) & 0xff) | ((bs(1) & 0xff) << 8) | ((bs(2) & 0x7f) << 16), MathContext.UNLIMITED )
+          sign.multiply(scand.divide(new BigDecimal(0x800000L,MathContext.UNLIMITED)).add(BigDecimal.ONE)).multiply(expt).doubleValue()
+        }
+     }
 
   // Read a MBF64 floating-point number and build a double out of it.  NB: we don't depend on IEEE float formats, 
   // using BigDecimals instead.
-  def readF64(): Double = { 
-     val bs0 = readByte().toLong
-     val bs1 = readByte().toLong 
-     val bs2 = readByte().toLong 
-     val bs3 = readByte().toLong 
-     val bs4 = readByte().toLong 
-     val bs5 = readByte().toLong 
-     val bs6 = readByte().toLong 
-     val bs7 = readByte() 
-     if (bs7 == 0) return 0.0
-
-     val sign = new BigDecimal( if ((0x80 & bs6) == 0) 1 else -1, MathContext.UNLIMITED )
-     val exp = bs7 - 129
-     val TWO = new BigDecimal(2,MathContext.UNLIMITED)
-     val expt = if (exp < 0) BigDecimal.ONE.divide(TWO.pow(-exp,MathContext.UNLIMITED),MathContext.UNLIMITED) else TWO.pow(exp,MathContext.UNLIMITED)
-     val scand = new BigDecimal( 
-         bs0 | (bs1 << 8L) | (bs2 << 16L) |
-         (bs3 << 24L) | (bs4 << 32L) | (bs5 << 40L) |
-         ((bs6 & 0x7f) << 48L) 
-       , MathContext.UNLIMITED )
-     sign.multiply(
-             scand.divide(new BigDecimal(0x80000000000000L,MathContext.UNLIMITED)).add(BigDecimal.ONE)).multiply(expt,MathContext.UNLIMITED).doubleValue()
-  }
-}
-
-// This is the class that parses out tokens in the GWBAS file.  First, it detects encrypted files 
-// and Unprotect()'s them.  Then, when printAllLines() is called, the tokens are converted to
-// strings sent through `out`, one at a time.
-class BasCat(buf: Array[Byte], out: java.io.PrintStream) {
-
-   val rdr = new BinReader(buf)
-   rdr.readByte() match {
-      case 0xff => /* nothing */
-      case 0xfe => Unprotect(buf)
-      case _    => throw new Exception("Bad 1st Byte!")
-   }
-
-   // interpret a single token, writing it to `out`, and return TRUE if the
-   // line should have more tokens.
-   def printToken(): Boolean = {
-     var b = rdr.readByte()
-     if (b >= 0xfd) b = (b << 8) | (rdr.readByte())
-
-     var hasMore = true
-     b match {
-         // The first three cases clean up sequences in the token stream:
-         // :ELSE => ELSE 
-         case 0x3A if rdr.peek(0xA1.toByte) => { out.print("ELSE"); rdr.skip(1) }
-         // :REM' => '  
-         case 0x3A if rdr.peek2(0x8F.toByte,0xD9.toByte) => { out.print('\''); rdr.skip(2) }
-         // WHILE+ => WHILE 
-         case 0xB1 if rdr.peek(0xE9.toByte) => { out.print("WHILE"); rdr.skip(1) }
-
-         // The following cases get special treatment, usually to format numbers.
-         case 0x00 => { out.println(); hasMore = false; }   // EOL
-         case 0x0B => out.printf("&O%o", int2Integer(rdr.readS16())) // OCTAL
-         case 0x0C => out.printf("&H%X", int2Integer(rdr.readS16())) // HEX
-         case 0x0E => out.print(rdr.readU16())    // DECIMAL UNSIGNED SHORT
-         case 0x0F => out.print(rdr.readByte())   // DECIMAL UNSIGNED BYTE
-         case x if (x >= 0x20 && x <= 0x7E) => out.print(x.toChar)  // SINGLE CHAR
-         case 0x1C => out.print(rdr.readS16())    // DECIMAL SIGNED SHORT
-         case 0x1D => out.printf("%g",double2Double(rdr.readF32()))  // FLOAT 32
-         case 0x1F => out.printf("%g",double2Double(rdr.readF64()))  // FLOAT 64
- 
-         // The rest are just tokens that map directly to strings in BasCat.Tokens.
-         case x if (x >= 0x11 && x <= 0x1B) => out.print(BasCat.Tokens(x - 0x11)) 
-         case x if (x >= 0x81 && x <= 0xF4) => out.print(BasCat.Tokens(x - 118))  
-         case x if (x >= 0xFD81 && x <= 0xFD8B) => out.print(BasCat.Tokens(x - 64770))
-         case x if (x >= 0xFE81 && x <= 0xFEA8) => out.print(BasCat.Tokens(x - 65015))
-         case x if (x >= 0xFF81 && x <= 0xFFA5) => out.print(BasCat.Tokens(x - 65231))
-
-         // Nothing else to do but complain loudly in the stream:
-         case _ => out.printf("<UNK {%d}!>", int2Integer(b))
-     }
-     hasMore
-   }
-
-   // Print all the lines of the GWBAS file through `out`.
-   def printAllLines() : Unit = {
-       rdr.reset()
-       while(!rdr.atEOF) {
-          if (rdr.readU16() == 0) return
-          out.print(rdr.readU16())
-          out.print("  ")
-          while(printToken()) { /* nothing */ }
+  val readF64 = for { 
+        bs <- readBytes(8) map { bs => bs.map( x => (x & 0xff).toLong ) }
+     } yield { 
+       if (bs(7) == 0) 0.0 else {
+         val sign = new BigDecimal( if ((0x80 & bs(6)) == 0) 1 else -1, MathContext.UNLIMITED )
+         val exp = bs(7).toInt - 129
+         val TWO = new BigDecimal(2,MathContext.UNLIMITED)
+         val expt = if (exp < 0) BigDecimal.ONE.divide(TWO.pow(-exp,MathContext.UNLIMITED),MathContext.UNLIMITED) else TWO.pow(exp,MathContext.UNLIMITED)
+         val scand = new BigDecimal( 
+             bs(0) | (bs(1) << 8L) | (bs(2) << 16L) |
+             (bs(3) << 24L) | (bs(4) << 32L) | (bs(5) << 40L) |
+             ((bs(6) & 0x7f) << 48L) 
+           , MathContext.UNLIMITED )
+         sign.multiply(
+            scand.divide(new BigDecimal(0x80000000000000L,MathContext.UNLIMITED)).add(BigDecimal.ONE)).multiply(expt,MathContext.UNLIMITED).doubleValue()
        }
-   }
+     }
+
+  // result is the haskell monadic 'return/pure'
+  def result[T](t: T) = StreamState { s => (t,s) }
+
+  // run a state-machine which returns options, collecting the results until it
+  // returns None
+  def collect[T](engine: StreamState[Option[T]]): StreamState[Vector[T]] = StreamState(s=> {
+     var state = s
+     val builder = Vector.newBuilder[T]
+     var more = true
+     while(more) {
+        (engine run state) match {
+          case (Some(t), s2) => { builder += t; state = s2 }
+          case (None, s2) => { more = false; state = s2 }
+        }
+     }
+     (builder.result, state)
+  })
 }
 
 object BasCat {
+   import StreamState._
+
+   def parseToken(token: Int): StreamState[Option[String]] = 
+     if (token == 0) result(None) else 
+     for {
+       lookahead <- peekU16BigEndian  // get the next two bytes into an Int
+       parsed    <- token match {
+         // The first three cases clean up sequences in the token stream:
+         // :ELSE => ELSE 
+         case 0x3A if ((lookahead & 0xff00) == 0xA100) => skip(1) map { _ => "ELSE" }
+         // :REM' => '  
+         case 0x3A if (lookahead == 0x8FD9) => skip(2) map { _ => "'" }
+         // WHILE+ => WHILE 
+         case 0xB1 if ((lookahead & 0xff00) == 0xE900) => skip(1) map { _ => "WHILE" }
+
+         // The following cases get special treatment, usually to format numbers.
+         case 0x0B => readS16 map { x => f"&O$x%o" } // OCTAL
+         case 0x0C => readS16 map { x => f"&H$x%X" } // HEX
+         case 0x0E => readU16 map { x => x.toString} // DECIMAL UNSIGNED SHORT
+         case 0x0F => readByte map { x => x.toString} // DECIMAL UNSIGNED BYTE
+         case x if (x >= 0x20 && x <= 0x7E) => result(x.toChar.toString)  // SINGLE CHAR
+         case 0x1C => readS16 map { x => x.toString}   // DECIMAL SIGNED SHORT
+         case 0x1D => readF32 map { x => f"$x%g" } // FLOAT 32
+         case 0x1F => readF64 map { x => f"$x%g" } // FLOAT 64
+
+         // The rest are just tokens that map directly to strings in BasCat.Tokens.
+         case x if (x >= 0x11 && x <= 0x1B) => result(Tokens(x - 0x11)) 
+         case x if (x >= 0x81 && x <= 0xF4) => result(Tokens(x - 118))  
+         case x if (x >= 0xFD81 && x <= 0xFD8B) => result(Tokens(x - 64770))
+         case x if (x >= 0xFE81 && x <= 0xFEA8) => result(Tokens(x - 65015))
+         case x if (x >= 0xFF81 && x <= 0xFFA5) => result(Tokens(x - 65231))
+
+         // Nothing else to do but complain loudly in the stream:
+         case _ => result(f"<UNK $token%X!>")
+       } 
+     } yield Some(parsed)
+
+   val lineToken: StreamState[Option[String]] = for {
+      b      <- peekByte
+      token  <- if (b < 0xfd) readByte else readU16BigEndian
+      parsed <- parseToken(token)
+   } yield parsed
+
+   val generateLine: StreamState[Option[String]] = for {
+     ptr <- readU16
+     line  <- if (ptr == 0) result(None) else
+              for {
+                lineno <- readU16
+                sb = new StringBuilder().append(lineno).append("  ")
+                toks   <- collect(lineToken)
+              } yield Some(toks.addString(sb).toString)
+   }  yield line
+
+   def generateLines(bs: Stream[Byte]): Stream[String] = {
+      val (ln, bs2) = generateLine.run(bs)
+      ln match {
+         case Some(str) => str #:: generateLines(bs2)
+         case None      => Stream.empty
+      }
+   }
 
    // Just a convenience method to use the BasCat class in typical fashion 
    def apply(buf: Array[Byte], output: java.io.PrintStream) = {
-       new BasCat(buf,output).printAllLines()
+     generateLines(
+       Stream.concat(
+         (buf(0) & 0xff) match {
+           case 0xff => buf.toStream.tail
+           case 0xfe => Unprotect(buf).toStream.tail
+           case _    => throw new Exception("Bad 1st Byte!")
+         },
+         Stream.continually(0.toByte))
+     ).foreach { output.println(_) }
    }
 
    // A main method to let us use BasCat from the command line.
    def main(args: Array[String]) = {
        import java.nio.file.{Files,Paths}
-       if (args.length == 1)
+      if (args.length == 1)
           BasCat(Files.readAllBytes(Paths.get(args(0))), System.out) 
        else
           System.err.println("USAGE: bascat <filename>")
    }
 
-   val Tokens = Array(
+   val Tokens = IndexedSeq(
       /* 0x11 - 0x1B */
       "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
       /* 0x81 - 0x90 */
