@@ -35,6 +35,7 @@ object Unprotect {
   }
 }
 
+// StreamState is our bespoke 'State' monad for parsing bytes.
 case class StreamState[A](run: Stream[Byte] => (A, Stream[Byte])) {
   def map[B] (f: A => B): StreamState[B] = StreamState (s1 => {
       val (a, s2) = run (s1)
@@ -47,6 +48,7 @@ case class StreamState[A](run: Stream[Byte] => (A, Stream[Byte])) {
   })
 }
 
+// The companion object has parse-related StreamStates defined in it
 object StreamState {
   import java.math.{BigDecimal,MathContext}
 
@@ -114,10 +116,11 @@ object StreamState {
   })
 }
 
+// BasCat has GWBAS-specific StreamState instances in it.
 object BasCat {
    import StreamState._
 
-   def parseToken(token: Int): StreamState[Option[String]] = 
+   def decodeToken(token: Int): StreamState[Option[String]] = 
      if (token == 0) result(None) else 
      for {
        lookahead <- peekU16BigEndian  // get the next two bytes into an Int
@@ -152,33 +155,33 @@ object BasCat {
        } 
      } yield Some(parsed)
 
-   val lineToken: StreamState[Option[String]] = for {
-      b      <- peekByte
-      token  <- if (b < 0xfd) readByte else readU16BigEndian
-      parsed <- parseToken(token)
-   } yield parsed
+   val parseToken: StreamState[Option[String]] = for {
+      b       <- peekByte
+      token   <- if (b < 0xfd) readByte else readU16BigEndian
+      decoded <- decodeToken(token)
+   } yield decoded
 
-   val generateLine: StreamState[Option[String]] = for {
-     ptr <- readU16
+   val parseLine: StreamState[Option[String]] = for {
+     ptr   <- readU16
      line  <- if (ptr == 0) result(None) else
               for {
                 lineno <- readU16
                 sb = new StringBuilder().append(lineno).append("  ")
-                toks   <- collect(lineToken)
+                toks   <- collect(parseToken)
               } yield Some(toks.addString(sb).toString)
    }  yield line
 
-   def generateLines(bs: Stream[Byte]): Stream[String] = {
-      val (ln, bs2) = generateLine.run(bs)
+   def lines(bs: Stream[Byte]): Stream[String] = {
+      val (ln, bs2) = parseLine.run(bs)
       ln match {
-         case Some(str) => str #:: generateLines(bs2)
+         case Some(str) => str #:: lines(bs2)
          case None      => Stream.empty
       }
    }
 
-   // Just a convenience method to use the BasCat class in typical fashion 
-   def apply(buf: Array[Byte], output: java.io.PrintStream) = {
-     generateLines(
+   // Just parse a GWBAS file, sending output to the given PrintStream
+   def parseGWBAS(buf: Array[Byte], output: java.io.PrintStream) = 
+     lines(
        Stream.concat(
          (buf(0) & 0xff) match {
            case 0xff => buf.toStream.tail
@@ -186,14 +189,13 @@ object BasCat {
            case _    => throw new Exception("Bad 1st Byte!")
          },
          Stream.continually(0.toByte))
-     ).foreach { output.println(_) }
-   }
+     ).foreach(output.println)
 
    // A main method to let us use BasCat from the command line.
    def main(args: Array[String]) = {
        import java.nio.file.{Files,Paths}
       if (args.length == 1)
-          BasCat(Files.readAllBytes(Paths.get(args(0))), System.out) 
+          parseGWBAS(Files.readAllBytes(Paths.get(args(0))), System.out) 
        else
           System.err.println("USAGE: bascat <filename>")
    }
