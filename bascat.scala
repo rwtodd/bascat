@@ -53,14 +53,12 @@ object StreamState {
   import java.math.{BigDecimal,MathContext}
 
   // These methods read (or peek at) the data at the head of the state
-  val peekByte = StreamState( s => (s.head & 0xff, s) )
-  val peekU16BigEndian = StreamState( s => (((s(0) & 0xff) << 8)|(s(1) & 0xff), s) )
+  val peek2 = StreamState( s => ( (s.head & 0xff, s(1) & 0xff), s) )
   val readByte = StreamState( s => (s.head & 0xff, s.tail) )
-  def readBytes(n: Int) = StreamState( s => (s.take(n).toArray, s.drop(n)) )
-  val readU16 = for { bs <- readBytes(2) } yield ((bs(1) & 0xff) << 8)|(bs(0) & 0xff)
+  val readU16 = for { b0 <- readByte ; b1 <- readByte } yield (b1 << 8)|b0
   val readS16 = readU16 map { _.toShort.toInt }
-  val readU16BigEndian = for { bs <- readBytes(2) } yield ((bs(0) & 0xff) << 8)|(bs(1) & 0xff)
   def skip(n: Int) = StreamState(s => (Unit, s drop n))
+  def readBytes(n: Int) = StreamState( s => (s.take(n).toArray, s.drop(n)) )
 
   // Read a MBF32 floating-point number and build a double out of it.  NB: we don't depend on IEEE float formats, 
   // using BigDecimals instead.
@@ -123,15 +121,15 @@ object BasCat {
    def decodeToken(token: Int): StreamState[Option[String]] = 
      if (token == 0) result(None) else 
      for {
-       lookahead <- peekU16BigEndian  // get the next two bytes into an Int
-       parsed    <- token match {
+       la      <- peek2  // lookahead
+       parsed  <- token match {
          // The first three cases clean up sequences in the token stream:
          // :ELSE => ELSE 
-         case 0x3A if ((lookahead & 0xff00) == 0xA100) => skip(1) map { _ => "ELSE" }
+         case 0x3A if (la._1 == 0xA1) => skip(1) map { _ => "ELSE" }
          // :REM' => '  
-         case 0x3A if (lookahead == 0x8FD9) => skip(2) map { _ => "'" }
+         case 0x3A if (la._1 == 0x8f && la._2 == 0xd9) => skip(2) map { _ => "'" }
          // WHILE+ => WHILE 
-         case 0xB1 if ((lookahead & 0xff00) == 0xE900) => skip(1) map { _ => "WHILE" }
+         case 0xB1 if (la._1 == 0xe9) => skip(1) map { _ => "WHILE" }
 
          // The following cases get special treatment, usually to format numbers.
          case 0x0B => readS16 map { x => f"&O$x%o" } // OCTAL
@@ -156,8 +154,8 @@ object BasCat {
      } yield Some(parsed)
 
    val parseToken: StreamState[Option[String]] = for {
-      b       <- peekByte
-      token   <- if (b < 0xfd) readByte else readU16BigEndian
+      b0      <- readByte
+      token   <- if (b0 < 0xfd) result(b0) else for { b1 <- readByte } yield (b0 << 8)|b1
       decoded <- decodeToken(token)
    } yield decoded
 
