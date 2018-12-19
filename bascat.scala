@@ -182,11 +182,11 @@ object BasCat {
      lines(
        Stream.concat(
          (buf(0) & 0xff) match {
-           case 0xff => buf.toStream.tail
-           case 0xfe => Unprotect(buf).toStream.tail
+           case 0xff => buf
+           case 0xfe => Unprotect(buf)
            case _    => throw new Exception("Bad 1st Byte!")
          },
-         Stream.continually(0.toByte))
+         Stream.continually(0.toByte)).tail
      ).foreach(output.println)
 
    // A main method to let us use BasCat from the command line.
