@@ -23,8 +23,11 @@
     <ClCompile Include="pch.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="W32Bascat.cpp">
+    <ClCompile Include="BasCat.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="run-tests.ps1" />
   </ItemGroup>
 </Project>
