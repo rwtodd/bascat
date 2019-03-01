@@ -9,6 +9,8 @@ using namespace std;
 /* Copyright (c) 2018 Richard Todd.
  * This program is GPLv2; see the LICENSE file */
 
+static bool big_endian = false; /* should we flip bytes? */
+
 static const char* TOKENS[] = {
 	/* 0x11 - 0x1B */
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
@@ -147,7 +149,9 @@ static uint16_t read_u16 (gwbas_data *const b)
 }
 
 /* Read a MS MBF-style 32-bit float, and convert it to a modern IEEE float.
- * NB: This function assumes little endian outputs are appropriate. */
+ * N.B. this code assumes that your processor is little-or-big endian for
+ * integers and floats, and not some hybrid mix.
+*/
 static float read_f32 (gwbas_data *const b)
 {
 	union
@@ -169,12 +173,19 @@ static float read_f32 (gwbas_data *const b)
 		uint8_t exp = (bytes.bs[3] - 2) & 0xff;
 		bytes.bs[3] = sgn | (exp >> 1);
 		bytes.bs[2] = ((exp << 7) | (bytes.bs[2] & 0x7f)) & 0xff;
+		if (big_endian)
+		{
+			std::swap (bytes.bs[0], bytes.bs[3]);
+			std::swap (bytes.bs[1], bytes.bs[2]);
+		}
 		return bytes.answer;
 	}
 }
 
 /* Read a MS MBF-style 64-bit float, and convert it to a modern IEEE double.
- * NB: This function assumes little endian outputs are appropriate. */
+* N.B. this code assumes that your processor is little-or-big endian for
+ * integers and floats, and not some hybrid mix.
+ */
 static double read_f64 (gwbas_data *const b)
 {
 	union
@@ -203,6 +214,13 @@ static double read_f64 (gwbas_data *const b)
 		}
 		tmp = (bytes.bs[0] << 1) & 0xff;
 		bytes.bs[0] = left_over | (tmp >> 4);
+		if (big_endian)
+		{
+			std::swap (bytes.bs[0], bytes.bs[7]);
+			std::swap (bytes.bs[1], bytes.bs[6]);
+			std::swap (bytes.bs[2], bytes.bs[5]);
+			std::swap (bytes.bs[3], bytes.bs[4]);
+		}
 		return bytes.answer;
 	}
 }
@@ -334,11 +352,42 @@ static bool read_line (gwbas_data *const b)
 	return true;
 }
 
-int main()
+void determine_endianness ()
+{
+	union
+	{
+		uint64_t answer;
+		uint8_t bs[8];
+	} bytes;
+	bytes.answer = static_cast<uint64_t>(1);
+	big_endian = (bytes.bs[0] == 0);
+}
+
+bool separate_console (void)
+{
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+
+	if (!GetConsoleScreenBufferInfo (GetStdHandle (STD_OUTPUT_HANDLE), &csbi))
+	{
+		printf ("GetConsoleScreenBufferInfo failed: %lu\n", GetLastError ());
+		return FALSE;
+	}
+
+	// if cursor position is (0,0) then we were launched in a separate console
+	return ((!csbi.dwCursorPosition.X) && (!csbi.dwCursorPosition.Y));
+}
+
+int main ()
 {
 	if (__argc != 2)
 	{
+		bool wait = separate_console();
 		fprintf (stderr, "Usage: %s <gwbas_data file>\n", __argv[0]);
+		if (wait)
+		{
+			fprintf (stderr, "This program is meant to be run from a console.\nPress <Enter> to close the window...");
+			getchar ();
+		}
 		return 1;
 	}
 	gwbas_data bas;
@@ -347,6 +396,9 @@ int main()
 		fprintf (stderr, "Error loading buffer for %s\n", __argv[1]);
 		return 1;
 	}
+
+	determine_endianness ();
+
 	while (read_line (&bas))
 		; /* nothing */
 
