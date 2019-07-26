@@ -36,7 +36,7 @@ object Unprotect {
 }
 
 // StreamState is our bespoke 'State' monad for parsing bytes.
-case class StreamState[A](run: Stream[Byte] => (A, Stream[Byte])) {
+case class StreamState[A](run: LazyList[Byte] => (A, LazyList[Byte])) {
   def map[B] (f: A => B): StreamState[B] = StreamState (s1 => {
       val (a, s2) = run (s1)
       (f (a), s2)
@@ -57,7 +57,7 @@ object StreamState {
   val readByte = StreamState( s => (s.head & 0xff, s.tail) )
   val readU16 = for { b0 <- readByte ; b1 <- readByte } yield (b1 << 8)|b0
   val readS16 = readU16 map { _.toShort.toInt }
-  def skip(n: Int) = StreamState(s => (Unit, s drop n))
+  def skip(n: Int) = StreamState(s => ( (), s drop n ))
   def readBytes(n: Int) = StreamState( s => (s.take(n).toArray, s.drop(n)) )
 
   // Read a MBF32 floating-point number and build a double out of it.  NB: we don't depend on IEEE float formats, 
@@ -169,24 +169,24 @@ object BasCat {
               } yield Some(toks.addString(sb).toString)
    }  yield line
 
-   def lines(bs: Stream[Byte]): Stream[String] = {
+   def lines(bs: LazyList[Byte]): LazyList[String] = {
       val (ln, bs2) = parseLine.run(bs)
       ln match {
          case Some(str) => str #:: lines(bs2)
-         case None      => Stream.empty
+         case None      => LazyList.empty
       }
    }
 
    // Just parse a GWBAS file, sending output to the given PrintStream
    def parseGWBAS(buf: Array[Byte], output: java.io.PrintStream) = 
      lines(
-       Stream.concat(
+       LazyList.concat(
          (buf(0) & 0xff) match {
            case 0xff => buf
            case 0xfe => Unprotect(buf)
            case _    => throw new Exception("Bad 1st Byte!")
          },
-         Stream.continually(0.toByte)).tail
+         LazyList.continually(0.toByte)).tail
      ).foreach(output.println)
 
    // A main method to let us use BasCat from the command line.
