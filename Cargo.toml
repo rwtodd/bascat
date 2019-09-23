@@ -2,5 +2,6 @@
 name = "bascat"
 version = "1.0.0"
 authors = ["Richard Todd <rwtodd@users.noreply.github.com>"]
+edition = '2018'
 
 [dependencies]
