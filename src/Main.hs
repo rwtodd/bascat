@@ -6,9 +6,10 @@ import System.Exit (die)
 import System.Environment (getArgs)
 import Data.Word (Word8, Word16)
 import Data.Int  (Int16)
-import Data.Bits (xor, shiftL, (.|.))
+import Data.Bits (xor, shiftL, (.|.), (.&.))
 import Data.Monoid (mconcat, mempty)
 import Data.String (fromString)
+import Data.Ratio ( (%) )
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Builder as Bld
@@ -40,11 +41,20 @@ read_ub16 = read_sb16 >>= (return . fromIntegral)
 skip :: Int -> Parser ()
 skip n = get >>= put . (B.drop n)
 
-read_f32, read_f64 :: Parser Double
+read_f32 :: Parser Float 
 read_f32 = do
   four <- take_bytes 4
-  return 0.0
+  let [a,b,c,d] = map fromIntegral four
+  return $ mbf32 a b c d 
+    where mbf32 :: Integer -> Integer -> Integer -> Integer -> Float 
+          mbf32 _ _ _ 0 = 0.0
+          mbf32 a b c d = let sign  = if (c .&. 0x80) == 0 then 1 else -1
+                              exp   = fromIntegral $ d - 129
+                              pow2  = if exp < 0 then 1 % (1 `shiftL` (-exp)) else (1 `shiftL` exp) % 1
+                              scand =  a .|. (b `shiftL` 8) .|. ((c .&. 0x7F) `shiftL` 16) 
+                          in fromRational $ sign * (1 + (scand % 0x800000)) * pow2
 
+read_f64 :: Parser Double
 read_f64 = do
   eight <- take_bytes 8
   return 0.0
@@ -80,7 +90,7 @@ decode_token t = do
               0x0E -> read_ub16 >>= return . Bld.word16Dec -- UNS SHORT 
               0x0F -> read_byte >>= return . Bld.word8Dec  -- UNS BYTE
               0x1C -> read_sb16 >>= return . Bld.int16Dec   -- SIGN SHORT
-              0x1D -> read_f32  >>= return . Bld.doubleDec  -- FLOAT 32
+              0x1D -> read_f32  >>= return . Bld.floatDec  -- FLOAT 32
               0x1F -> read_f64  >>= return . Bld.doubleDec  -- FLOAT 64 
 
               x | (x >= 0x11 && x <= 0x1B) -> return (tokens Arr.! (x - 0x11))
