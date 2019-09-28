@@ -57,7 +57,16 @@ read_f32 = do
 read_f64 :: Parser Double
 read_f64 = do
   eight <- take_bytes 8
-  return 0.0
+  let [a,b,c,d,e,f,g,h] = map fromIntegral eight
+  return $ mbf64 a b c d e f g h
+    where mbf64 :: Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Integer -> Double
+          mbf64 _ _ _ _ _ _ _ 0 = 0.0
+          mbf64 a b c d e f g h = let sign  = if (g .&. 0x80) == 0 then 1 else -1
+                                      exp   = fromIntegral $ h - 129
+                                      pow2  = if exp < 0 then 1 % (1 `shiftL` (-exp)) else (1 `shiftL` exp) % 1
+                                      scand = a .|. (b `shiftL` 8) .|. (c `shiftL` 16) .|. (d `shiftL` 24) .|.
+                                              (e `shiftL` 32) .|. (f `shiftL` 40) .|. ((g .&. 0x7F) `shiftL` 48)
+                                  in fromRational $ sign * (1 + (scand % 0x80000000000000)) * pow2
 
 collect :: Monoid a => Parser (Maybe a) -> Parser a
 collect p = collect' mempty
