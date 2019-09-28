@@ -10,15 +10,20 @@ import Data.Bits (xor, shiftL, (.|.), (.&.))
 import Data.Monoid (mconcat, mempty)
 import Data.String (fromString)
 import Data.Ratio ( (%) )
+import Text.Printf (printf)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Builder as Bld
 import qualified Data.Array.IArray as Arr
 import Control.Monad.State (get,put,runState,State)
 
--- State-handling....
+-- State-handling: Parsing the input bytes is done via a state-machine over
+-- the remaining (unconsumed) ByteString
 type Parser = State B.ByteString
 
+-- Pulls `n` bytes from the unconsumed state. If there aren't enough bytes,
+-- it returns 0's instead.  This ensures that a bad file still terminates normally,
+-- albeit with some garbage output at the end.
 take_bytes :: Int -> Parser [Word8]
 take_bytes n = do
   src <- get
@@ -68,10 +73,15 @@ read_f64 = do
                                               (e `shiftL` 32) .|. (f `shiftL` 40) .|. ((g .&. 0x7F) `shiftL` 48)
                                   in fromRational $ sign * (1 + (scand % 0x80000000000000)) * pow2
 
+-- `collect` repeatedly applies a Parser of Maybe monoids, and 
+-- `mappend`'s the results until it gets a `Nothing` back
 collect :: Monoid a => Parser (Maybe a) -> Parser a
 collect p = collect' mempty
   where collect' acc = p >>= maybe (return acc) (collect' . (mappend acc))
 
+-- `grab_char_range` pulls off any prefix of the unconsumed state that
+-- maps to ASCII between 0x20 and 0x7E. The only exception is 0x3A ':'
+-- because it is part of a simplification pattern that `decode_token` needs to see. 
 grab_char_range :: Parser B.ByteString
 grab_char_range  = do
   src <- get
@@ -79,10 +89,10 @@ grab_char_range  = do
   put rest
   return chrs
 
--- some pre-made ByteStrings useful in `decode_token`
-prefixA1 = B.singleton (fromIntegral 0xA1)
+-- These are pre-made ByteStrings which are useful in `decode_token`
+prefixA1   = B.singleton (fromIntegral 0xA1)
 prefix8FD9 = B.cons (fromIntegral 0x8F) (B.singleton (fromIntegral 0xD9))
-prefixE9 = B.singleton (fromIntegral 0xE9)
+prefixE9   = B.singleton (fromIntegral 0xE9)
 
 decode_token :: Int -> Parser (Maybe Bld.Builder)
 decode_token 0 = return Nothing
@@ -93,32 +103,31 @@ decode_token t = do
                    | B.isPrefixOf prefix8FD9 src -> (skip 2) >> return (tokens Arr.! 99) -- "'"
                    | otherwise                   -> return (Bld.word8 0x3A)
               0xB1 | B.isPrefixOf prefixE9 src   -> (skip 1) >> return (tokens Arr.! 59) -- "WHILE"
-
-              0x0B -> read_sb16 >>= return . Bld.int16Dec  -- OCTAL
-              0x0C -> read_sb16 >>= return . Bld.int16HexFixed  -- HEX
-              0x0E -> read_ub16 >>= return . Bld.word16Dec -- UNS SHORT 
-              0x0F -> read_byte >>= return . Bld.word8Dec  -- UNS BYTE
-              0x1C -> read_sb16 >>= return . Bld.int16Dec   -- SIGN SHORT
-              0x1D -> read_f32  >>= return . Bld.floatDec  -- FLOAT 32
-              0x1F -> read_f64  >>= return . Bld.doubleDec  -- FLOAT 64 
-
-              x | (x >= 0x11 && x <= 0x1B) -> return (tokens Arr.! (x - 0x11))
-                | (x >= 0x81 && x <= 0xF4) -> return (tokens Arr.! (x - 118))
-                | (x >= 0xFD81 && x <= 0xFD8B) -> return (tokens Arr.! (x - 64770))
-                | (x >= 0xFE81 && x <= 0xFEA8) -> return (tokens Arr.! (x - 65015))
-                | (x >= 0xFF81 && x <= 0xFFA5) -> return (tokens Arr.! (x - 65231))
+              0x0B -> read_sb16 >>= return . fromString . (printf "&O%o")    -- OCTAL
+              0x0C -> read_sb16 >>= return . fromString . (printf "&H%04X")  -- HEX
+              0x0E -> read_ub16 >>= return . Bld.word16Dec      -- UNS SHORT 
+              0x0F -> read_byte >>= return . Bld.word8Dec       -- UNS BYTE
+              0x1C -> read_sb16 >>= return . Bld.int16Dec       -- SIGN SHORT
+              0x1D -> read_f32  >>= return . Bld.floatDec       -- FLOAT 32
+              0x1F -> read_f64  >>= return . Bld.doubleDec      -- FLOAT 64 
+              x    | (x >= 0x11 && x <= 0x1B) -> return (tokens Arr.! (x - 0x11))
+                   | (x >= 0x81 && x <= 0xF4) -> return (tokens Arr.! (x - 118))
+                   | (x >= 0xFD81 && x <= 0xFD8B) -> return (tokens Arr.! (x - 64770))
+                   | (x >= 0xFE81 && x <= 0xFEA8) -> return (tokens Arr.! (x - 65015))
+                   | (x >= 0xFF81 && x <= 0xFFA5) -> return (tokens Arr.! (x - 65231))
               otherwise -> return (fromString "<UNK!>")
   return $ Just parsed
 
 read_token_code :: Parser Int
 read_token_code = do
-  b0    <- read_byte
+  b0 <- read_byte
   if (b0 < 0xfd) 
     then return $ fromIntegral b0 
-    else read_byte >>= 
-           (\b1 -> return $ ((fromIntegral b0) `shiftL` 8) .|. 
-                            (fromIntegral b1))
+    else do b1 <- read_byte 
+            return $ ((fromIntegral b0) `shiftL` 8) .|. (fromIntegral b1)
  
+-- next_token always tries to grab some ASCII chars first. If it can, it returns
+-- a builder of them. Otherwise, it decodes the next token-code.
 next_token :: Parser (Maybe Bld.Builder)
 next_token = do
   chrs <- grab_char_range
@@ -155,15 +164,24 @@ main = do
   args <- getArgs
   when (null args) $ die "Usage: bascat <gwbas file>!"
   src   <- read_src (head args)
-  Bld.hPutBuilder  stdout $ fst (runState parse_lines (B.tail src))
+  Bld.hPutBuilder stdout $ fst (runState parse_lines (B.tail src))
 
--- Some support data for the decrypting Iterator
-key11, key13 :: Arr.Array Int Word8
-key11 = Arr.listArray (0,10) [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C]
-key13 = Arr.listArray (0,12) [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A]
 
+--  This is a decrypter for protected BAS files.
+--  I found the algorithm in a python program ("PC-BASIC"),
+--     (  http://sourceforge.net/p/pcbasic/wiki/Home/  )
+--  ... but the algorithm was published in:
+--  The Cryptogram computer supplement #19, American Cryptogram Association, Summer 1994
+-- 
+--  Basically there is a 13-byte and an 11-byte key, which are BOTH applied
+--  in a cycle across the bytes of the input.  Also, a reversed 11-index is subtracted
+--  from the byte, while a reversed 13-index is added to the byte. By 'reversed', I
+--  mean that as the 11-index goes from 0 to 10, the reversed index goes from 11 to 1.
 decrypt_source src = snd $ B.mapAccumL decr (-1) src
-  where decr :: Int -> Word8 -> (Int, Word8)
+  where key11, key13 :: Arr.Array Int Word8
+        key11 = Arr.listArray (0,10) [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C]
+        key13 = Arr.listArray (0,12) [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A]
+        decr :: Int -> Word8 -> (Int, Word8)
         decr (-1) b  = (0, 0xFF)
         decr idx  b  = let idx11 = idx `mod` 11
                            idx13 = idx `mod` 13
