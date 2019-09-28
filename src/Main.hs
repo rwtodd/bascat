@@ -7,25 +7,25 @@ import System.Environment (getArgs)
 import Data.Word (Word8, Word16)
 import Data.Int  (Int16)
 import Data.Bits (xor, shiftL, (.|.))
-import Data.Monoid (mconcat)
+import Data.Monoid (mconcat, mempty)
 import Data.String (fromString)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as C
 import qualified Data.ByteString.Builder as Bld
 import qualified Data.Array.IArray as Arr
-import Control.Monad.State as State
+import Control.Monad.State (get,put,runState,State)
 
 -- State-handling....
-type Parser = State.State B.ByteString
+type Parser = State B.ByteString
 
 looking_at :: B.ByteString -> Parser Bool
-looking_at bstr = State.get >>= (\src -> return $ B.isPrefixOf bstr src)
+looking_at bstr = get >>= (\src -> return $ B.isPrefixOf bstr src)
 
 take_bytes :: Int -> Parser [Word8]
 take_bytes n = do
-  src <- State.get
+  src <- get
   let (prefix, suffix) = B.splitAt n src
-  State.put suffix
+  put suffix
   return $ if (B.length prefix == n) then B.unpack prefix else (take n $ repeat (fromIntegral 0))
 
 read_byte :: Parser Word8
@@ -42,7 +42,7 @@ read_ub16 = read_sb16 >>= (return . fromIntegral)
 
 skip :: Int -> Parser ()
 skip n = do
-  src <- State.get
+  src <- get
   put $ B.drop n src
   return ()
 
@@ -55,14 +55,13 @@ read_f64 = do
   eight <- take_bytes 8
   return 0.0
 
--- FIXME is there a way to avoid the `reverse` call??
-collect :: Parser (Maybe a) -> Parser [a]
-collect p = (collect' []) >>= (return . reverse)
+collect :: Monoid a => Parser (Maybe a) -> Parser a
+collect p = collect' mempty
   where collect' acc = do
-                         x <- p
-                         case x of
+                         next <- p
+                         case next of
                            Nothing -> return acc 
-                           Just a  -> collect' (a:acc)
+                           Just x  -> collect' (mappend acc x)
 
 grab_char_range :: Parser B.ByteString
 grab_char_range  = do
@@ -79,7 +78,7 @@ prefixE9 = B.singleton (fromIntegral 0xE9)
 decode_token :: Int -> Parser (Maybe Bld.Builder)
 decode_token 0 = return Nothing
 decode_token t = do
-  src    <- State.get
+  src    <- get
   parsed <- case t of
               0x3A | B.isPrefixOf prefixA1 src   -> (skip 1) >> return (tokens Arr.! 43) -- "ELSE"
                    | B.isPrefixOf prefix8FD9 src -> (skip 2) >> return (tokens Arr.! 99) -- "'"
@@ -130,7 +129,7 @@ parse_line = do
          lineno <- read_ub16
          let linestr = (Bld.word16Dec lineno) `mappend` twoSpaces 
          toks   <- collect next_token
-         return (Just $ mconcat (linestr:toks))
+         return (Just $ linestr `mappend` toks `mappend` (Bld.char8 '\n'))
 
 parse_lines = collect parse_line
 
@@ -142,18 +141,12 @@ read_src fname = do
     0xFF      -> return fileSrc
     otherwise -> die (fname ++ ": not a valid GWBAS/BASICA file!")
 
-print_lines src = do
-  let (l,rest) = runState parse_line src
-  case l of
-    Just text -> Bld.hPutBuilder stdout (text `mappend` (Bld.char8 '\n')) >> print_lines rest
-    Nothing   -> return ()
-
 main :: IO ()
 main = do
   args <- getArgs
   when (null args) $ die "Usage: bascat <gwbas file>!"
-  src <- read_src (head args)
-  print_lines (B.tail src)
+  src   <- read_src (head args)
+  Bld.hPutBuilder  stdout $ fst (runState parse_lines (B.tail src))
 
 -- Some support data for the decrypting Iterator
 key11, key13 :: Arr.Array Int Word8
