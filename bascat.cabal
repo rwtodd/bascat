@@ -3,10 +3,10 @@ version:             0.1.0.0
 synopsis:            Decode tokenized GW-BASIC/BASICA files.
 -- description:
 homepage:            https://github.com/rwtodd/bascat#readme
-license:             BSD3
+license:             MIT
 license-file:        LICENSE
 author:              Richard Todd
-maintainer:          richard.w.todd@outlook.com
+maintainer:          richard.wesley.todd@gmail.com
 copyright:           2019 Richard Todd
 category:            Web
 build-type:          Simple
