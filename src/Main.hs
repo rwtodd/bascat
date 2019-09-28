@@ -18,9 +18,6 @@ import Control.Monad.State (get,put,runState,State)
 -- State-handling....
 type Parser = State B.ByteString
 
-looking_at :: B.ByteString -> Parser Bool
-looking_at bstr = get >>= (\src -> return $ B.isPrefixOf bstr src)
-
 take_bytes :: Int -> Parser [Word8]
 take_bytes n = do
   src <- get
@@ -41,10 +38,7 @@ read_ub16 :: Parser Word16
 read_ub16 = read_sb16 >>= (return . fromIntegral)
 
 skip :: Int -> Parser ()
-skip n = do
-  src <- get
-  put $ B.drop n src
-  return ()
+skip n = get >>= put . (B.drop n)
 
 read_f32, read_f64 :: Parser Double
 read_f32 = do
@@ -57,11 +51,7 @@ read_f64 = do
 
 collect :: Monoid a => Parser (Maybe a) -> Parser a
 collect p = collect' mempty
-  where collect' acc = do
-                         next <- p
-                         case next of
-                           Nothing -> return acc 
-                           Just x  -> collect' (mappend acc x)
+  where collect' acc = p >>= maybe (return acc) (collect' . (mappend acc))
 
 grab_char_range :: Parser B.ByteString
 grab_char_range  = do
@@ -117,8 +107,9 @@ next_token = do
    then read_token_code >>= decode_token
    else return (Just $ Bld.byteString chrs)
 
-twoSpaces :: Bld.Builder
-twoSpaces = fromString "  "
+eol, spacing :: Bld.Builder
+spacing = fromString "  "
+eol     = Bld.char8 '\n'
 
 parse_line :: Parser (Maybe Bld.Builder)
 parse_line = do
@@ -127,9 +118,8 @@ parse_line = do
     then return Nothing
     else do
          lineno <- read_ub16
-         let linestr = (Bld.word16Dec lineno) `mappend` twoSpaces 
          toks   <- collect next_token
-         return (Just $ linestr `mappend` toks `mappend` (Bld.char8 '\n'))
+         return $ Just (mconcat [Bld.word16Dec lineno, spacing, toks, eol])
 
 parse_lines = collect parse_line
 
@@ -202,11 +192,9 @@ tokens = Arr.listArray (0, 214) $ map fromString [
     --  0xFE81 - 0xFE90 
     "FILES", "FIELD", "SYSTEM", "NAME", "LSET", "RSET", "KILL", "PUT",
     "GET", "RESET", "COMMON", "CHAIN", "DATE$", "TIME$", "PAINT", "COM",
-
     --  0xFE91 - 0xFEA0 
     "CIRCLE", "DRAW", "PLAY", "TIMER", "ERDEV", "IOCTL", "CHDIR", "MKDIR",
     "RMDIR", "SHELL", "ENVIRON", "VIEW", "WINDOW", "PMAP", "PALETTE", "LCOPY",
-
     --  0xFEA1 - 0xFEA8 
     "CALLS", "<0xFEA2!>", "<0xFEA3!>", "NOISE", "PCOPY", "TERM", "LOCK", "UNLOCK",
 
@@ -214,11 +202,9 @@ tokens = Arr.listArray (0, 214) $ map fromString [
     --  0xFF81 - 0xFE90 
     "LEFT$", "RIGHT$", "MID$", "SGN", "INT", "ABS", "SQR", "RND",
     "SIN", "LOG", "EXP", "COS", "TAN", "ATN", "FRE", "INP",
-
     --  0xFF91 - 0xFEA0 
     "POS", "LEN", "STR$", "VAL", "ASC", "CHR$", "PEEK", "SPACE$",
     "OCT$", "HEX$", "LPOS", "CINT", "CSNG", "CDBL", "FIX", "PEN",
-
     --  0xFFA1 - 0xFFA5 
     "STICK", "STRIG", "EOF", "LOC", "LOF"
    ]
