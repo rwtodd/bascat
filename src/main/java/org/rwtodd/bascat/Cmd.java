@@ -1,20 +1,3 @@
-/*
- * Copyright (C) 2019 Richard Todd
- *
- * This program is free software; you can redistribute it and/or
- * modify it under the terms of the GNU General Public License
- * as published by the Free Software Foundation; either version 2
- * of the License, or (at your option) any later version.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
- */
 package org.rwtodd.bascat;
 
 /*
@@ -25,6 +8,9 @@ import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.io.IOException;
+import java.nio.BufferUnderflowException;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 
 /**
  *
@@ -32,26 +18,27 @@ import java.io.IOException;
  */
 public class Cmd {
 
-    private final BinaryReader in;
-
-    private boolean nextToken(StringBuilder sb) {
+    private static boolean nextToken(final ByteBuffer in, final StringBuilder sb) {
         boolean hasMore = true;
-        int nxt = in.readu8();
+        int nxt = in.get() & 0xff;
         if (nxt >= 0xFD) {
-            nxt = (nxt << 8) | in.readu8();
+            nxt = (nxt << 8) | (in.get() & 0xff);
         }
 
-        // first check for cases to clean up sequences...
-        if (nxt == 0x3A && in.peek(0xA1)) {
-            sb.append("ELSE");
-            in.skip(1);
-        } else if (nxt == 0x3A && in.peek2(0x8F, 0xD9)) {
-            sb.append('\'');
-            in.skip(2);
-        } else if (nxt == 0xB1 && in.peek(0xE9)) {
-            sb.append("WHILE");
-            in.skip(1);
-        } // a couple of ranges we can check first...
+        if (nxt == 0x3A || nxt == 0xB1) {
+            final int peek2 = in.mark().getShort() & 0xffff;
+            final int peek1 = peek2 & 0xff;
+            in.reset();
+
+            if(nxt == 0x3A) {
+                if (peek1 == 0xA1) { sb.append("ELSE"); in.get(); }
+                else if(peek2 == 0xD98F) { sb.append('\''); in.getShort(); }
+                else sb.append(':');
+            } else {
+                sb.append("WHILE");
+                if(peek1 == 0xE9) in.get();
+            }
+        } // a range of ASCII text...
         else if (nxt >= 0x20 && nxt <= 0x7E) {
             sb.append((char) nxt);
         } //  a bunch of ranges that are predefined tokens...
@@ -73,25 +60,25 @@ public class Cmd {
                     hasMore = false;
                     break;
                 case 0x0B:  // OCTAL
-                    sb.append(String.format("&O%o", in.read16()));
+                    sb.append(String.format("&O%o", in.getShort()));
                     break;
                 case 0x0C:  // HEX
-                    sb.append(String.format("&H%X", in.read16()));
+                    sb.append(String.format("&H%X", in.getShort()));
                     break;
                 case 0x0E:  // DECIMAL UNSIGNED SHORT
-                    sb.append(in.readu16());
+                    sb.append(in.getShort() & 0xffff);
                     break;
                 case 0x0F:  // DECIMAL UNSIGNED BYTE
-                    sb.append(in.readu8());
+                    sb.append(in.get() & 0xff);
                     break;
                 case 0x1C: // DECIMAL SIGNED SHORT
-                    sb.append(in.read16());
+                    sb.append(in.getShort());
                     break;
                 case 0x1D:  // FLOAT 32
-                    sb.append(String.format("%g", in.readf32()));
+                    sb.append(String.format("%g", MBFReader.getMBF32(in)));
                     break;
                 case 0x1F: // FLOAT 64
-                    sb.append(String.format("%g", in.readf64()));
+                    sb.append(String.format("%g", MBFReader.getMBF64(in)));
                     break;
 
                 default:
@@ -103,33 +90,30 @@ public class Cmd {
         return hasMore;
     }
 
-    private void cat(PrintStream ps) {
-        in.reset();
-        in.skip(1);
-        final var sb = new StringBuilder(120);
-        while (!in.atEOF()) {
-            if (in.readu16() == 0) {
-                break; // 0 pointer == EOF
-            }
-            sb.append(in.readu16());
-            sb.append("  ");
-            while (nextToken(sb)) {
-                /* do nothing */ }
-            ps.println(sb.toString());
-            sb.setLength(0);
-        }
-    }
+    public static void cat(byte[] source, PrintStream ps)
+            throws IllegalArgumentException {
+        final ByteBuffer in = ByteBuffer.wrap(source).order(ByteOrder.LITTLE_ENDIAN);
 
-    private Cmd(byte[] source) {
-        in = new BinaryReader(source);
-        switch (in.readu8()) {
+        switch (in.get() & 0xff) {
             case 0xFE:
                 Unprotector.unprotect(source);
                 break;
             case 0xFF:
                 break;
             default:
-                throw new RuntimeException("Bad 1st byte!");
+                throw new IllegalArgumentException("Bad 1st byte!");
+        }
+
+        final var sb = new StringBuilder(120);
+        while (in.hasRemaining()) {
+            if (in.getShort() == 0) {
+                break; // 0 pointer == EOF
+            }
+            sb.append(in.getShort() & 0xffff).append("  ");
+            while (nextToken(in, sb)) {
+                /* do nothing */ }
+            ps.println(sb.toString());
+            sb.setLength(0);
         }
     }
 
@@ -143,8 +127,8 @@ public class Cmd {
         }
 
         try {
-            new Cmd(Files.readAllBytes(Paths.get(args[0]))).cat(System.out);
-        } catch (IOException e) {
+            cat(Files.readAllBytes(Paths.get(args[0])), System.out);
+        } catch (IOException | BufferUnderflowException | IllegalArgumentException e) {
             System.err.println(e);
         }
     }
