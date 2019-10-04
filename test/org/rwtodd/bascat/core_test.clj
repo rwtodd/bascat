@@ -1,5 +1,5 @@
 (ns org.rwtodd.bascat.core-test
-  (:import (java.nio ByteBuffer ByteOrder))
+  (:import (java.nio ByteBuffer ByteOrder BufferUnderflowException))
   (:require [clojure.test :refer :all]
             [org.rwtodd.bascat.core :refer :all]))
 
@@ -34,3 +34,25 @@
     (is (== 0.5 (#'org.rwtodd.bascat.core/decode-mbf64 (make-buffer [0 0 0 0 0 0 0 0x80]))))
     (is (== 0.25 (#'org.rwtodd.bascat.core/decode-mbf64 (make-buffer [0 0 0 0 0 0 0 0x7f]))))
     (is (== -0.5 (#'org.rwtodd.bascat.core/decode-mbf64 (make-buffer [0 0 0 0 0 0 0x80 0x80]))))))
+
+
+(defn- gwbasic-lines
+  "Generate a tokenized array from a collection of tokenized lines.
+  Lines will be numbered 1, 2, etc..."
+  [& ls]
+  (byte-array
+   (concat [255]
+           (apply concat
+                  (interleave (map #(vector 1 0 (inc %) 0) (range))
+                              ls
+                              (repeat [0])))
+           [0 0])))
+
+(deftest bascat-tests
+  (testing "Unexpected EOF"
+    (is (thrown? BufferUnderflowException (bascat (byte-array [255 1 0 0x91 0])))))
+  (testing "tiny hand-made examples"
+    (is (= (format "1  PRINT%n")
+           (with-out-str (bascat (gwbasic-lines [0x91])))))
+    (is (= (format "1  PRINT%n2  GOTO 1%n")
+           (with-out-str (bascat (gwbasic-lines [0x91] [0x89 0x20 0x12])))))))
