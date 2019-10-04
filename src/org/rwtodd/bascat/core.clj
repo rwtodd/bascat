@@ -84,7 +84,7 @@
   "Grabs the next token from the `java.nio.ByteBuffer` and
   formats it into the provided StringBuilder. Returns nil if
   the token was a zero."
-  [buf sb]
+  [^ByteBuffer buf ^StringBuilder sb]
   (let [first-byte (bit-and (.get buf) 0xff)
         tok        (if (>= first-byte 0xfd)
                      (bit-or (bit-shift-left first-byte 8)
@@ -129,7 +129,7 @@
             0x0c (.append sb (format "&H%X" (.getShort buf)))
             0x0e (.append sb (bit-and (.getShort buf) 0xffff))
             0x0f (.append sb (bit-and (.get buf) 0xff))
-            0x1c (.append sb (short (.getShort buf)))
+            0x1c (.append sb (int (.getShort buf)))
             0x1d (.append sb (format "%g" (decode-mbf32 buf)))
             0x1f (.append sb (format "%g" (decode-mbf64 buf)))
             (.append sb (format "<UNK! %x>" tok))))
