@@ -49,6 +49,8 @@
            [0 0])))
 
 (deftest bascat-tests
+  (testing "Malformed file"
+    (is (thrown? IllegalArgumentException (bascat (byte-array [77 1 0 0x91 0])))))
   (testing "Unexpected EOF"
     (is (thrown? BufferUnderflowException (bascat (byte-array [255 1 0 0x91 0])))))
   (testing "tiny hand-made examples"

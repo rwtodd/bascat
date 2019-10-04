@@ -163,7 +163,7 @@
     (case (bit-and (.get buffer) 0xff)
       0xFE   (unprotect! bs)
       0xFF   nil
-      :else  (throw (IllegalArgumentException. "Bad 1st byte!")))
+      (throw (IllegalArgumentException. "Bad 1st byte! Not a GWBASIC/BASICA file?")))
     (while (and (.hasRemaining buffer)
                 (not (zero? (.getShort buffer))))
       (.. sb
