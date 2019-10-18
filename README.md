@@ -5,7 +5,7 @@ There are actually a fair amount of .BAS files out there in the default tokenize
 format, but you'd need a working GWBASIC/BASICA to see the source.
 
 This is a CSharp/DotNet Core version.  I have implemented the program in many languages before, 
-but this is among the simplest of them.  In most of the previous versions,
+but this is among the simplest of them.  In some previous versions,
 I parse the input into a Token stream, and then clean up and print the stream.
 At the time, I was thinking about the ability to run statistics on the tokens
 and similar uses, but at this point I consider that overkill. This version
@@ -31,12 +31,14 @@ here:
 
 I've written BasCat in multiple languages as a learning exercise.
 
+ - Scala [Scala.BasCat repo](https://github.com/rwtodd/Scala.BasCat)
+ - Java [Java.BasCat repo](https://github.com/rwtodd/Java.BasCat)
+ - Kotlin [Kotlin.BasCat repo](https://github.com/rwtodd/Kotlin.BasCat)
  - Go [Go.Bascat repo](https://github.com/rwtodd/Go.Bascat)
  - Python [SmallProgs 18 repo](https://github.com/rwtodd/small\_programs\_2018)
- - Common Lisp [SmallProgs 18 repo](https://github.com/rwtodd/small\_programs\_2018)
- - Scala [Scala.BasCat repo](https://github.com/rwtodd/Scala.BasCat)
- - Older Scala version (in a private repo)
- - Java [SmallProgs 18 repo](https://github.com/rwtodd/small\_programs\_2018)
+ - Common Lisp [rt-bascat repo](https://github.com/rwtodd/rt-bascat)
+ - Older Java [SmallProgs 18 repo](https://github.com/rwtodd/small\_programs\_2018)
+ - CSharp [Csharp.BasCat repo](https://github.com/rwtodd/CSharp.BasCat)
+ - Rust [Rust.Bascat repo](https://github.com/rwtodd/Rust.Bascat)
  - JavaScript  (in a private repo)
- - Kotlin [Kotlin.BasCat repo](https://github.com/rwtodd/Kotlin.BasCat)
 
