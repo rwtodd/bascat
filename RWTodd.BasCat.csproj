@@ -4,6 +4,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp3.0</TargetFramework>
     <LangVersion>latest</LangVersion>
+    <AssemblyName>bascat</AssemblyName>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
 </Project>

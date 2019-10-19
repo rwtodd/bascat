@@ -2,7 +2,7 @@
 using System.IO;
 using System.Threading.Tasks;
 
-namespace BasCat
+namespace RWTodd.BasCat
 {
 
     internal static class Program

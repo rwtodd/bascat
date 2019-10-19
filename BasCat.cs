@@ -2,7 +2,7 @@
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BasCat
+namespace RWTodd.BasCat
 {
     internal sealed class BasCat
     {
@@ -69,18 +69,18 @@ namespace BasCat
         {
             var sb = new StringBuilder(120);
             var sw = new System.IO.StringWriter(sb);
-            Task lineWrite = null;
+            Task? lineWrite = null;
             while (!rdr.EOF)
             {
                 if (rdr.ReadU16() == 0) break;  // 0 pointer == EOF
                 sw.Write(rdr.ReadU16());
                 sw.Write("  ");
                 while(PrintToken(sw)) {  /* nothing */ }
-                if(lineWrite != null) await lineWrite;
+                if (lineWrite != null) await lineWrite;
                 lineWrite = tw.WriteAsync(sw.ToString());
                 sb.Clear();
             }
-            await lineWrite;
+            if (lineWrite != null) await lineWrite;
         }
 
         private static readonly String[] Tokens =

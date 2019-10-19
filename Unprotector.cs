@@ -1,4 +1,4 @@
-﻿namespace BasCat
+﻿namespace RWTodd.BasCat
 {
     internal sealed class Unprotector
     {
