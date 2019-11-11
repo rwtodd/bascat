@@ -6,6 +6,7 @@
     <version>1.0</version>
     <packaging>jar</packaging>
     <build>
+    	<finalName>bascat</finalName>
         <pluginManagement>
             <plugins>
                 <plugin>
