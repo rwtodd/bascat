@@ -8,10 +8,8 @@ If you look around github, I have made versions in several languages (rust, c#, 
 for fun.  Obviously, the C version is the fastest.  It memory-maps the file, which
 I don't do in the managed-language versions.
 
-There is a `unix-version` branch in this repo... the version on the master branch
-is Win32.
-
-
+This is the `win32/UWP` branch in the repo... the version on the master branch
+is unixy.
 
 
 
