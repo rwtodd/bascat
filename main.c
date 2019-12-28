@@ -75,7 +75,7 @@ static const char *TOKENS[] = {
 
 /* Decrypt a buffer of data according to the algorithm I found online */
 static void
-decrypt_buffer (uint8_t * buf, size_t len)
+decrypt_buffer (uint8_t * buf, uint8_t * const end)
 {
   static const uint8_t KEY11[] = {
     0x1E, 0x1D, 0xC4, 0x77, 0x26, 0x97, 0xE0,
@@ -85,8 +85,6 @@ decrypt_buffer (uint8_t * buf, size_t len)
     0xA9, 0x84, 0x8D, 0xCD, 0x75, 0x83, 0x43,
     0x63, 0x24, 0x83, 0x19, 0xF7, 0x9A
   };
-  *buf++ = 0xff;                /* don't need to decrypt again */
-  uint8_t *const end = buf + len;
   uint8_t idx11 = 0, idx13 = 0;
   while (buf != end)
     {
@@ -106,9 +104,8 @@ decrypt_buffer (uint8_t * buf, size_t len)
  * will terminate). */
 typedef struct
 {
-  uint8_t *buffer;
-  size_t len;
-  size_t index;
+  uint8_t *cur;
+  uint8_t *end;
 } gwbas_data;
 
 /* Read a u8 from a byte iterator, returning 0u8 on all
@@ -118,30 +115,32 @@ typedef struct
 static inline uint8_t
 read_u8 (gwbas_data * const b)
 {
-  return (b->index < b->len) ? b->buffer[b->index++] : 0;
+  return (b->cur < b->end) ? *b->cur++ : 0;
 }
 
 /* Peek ahead a byte. */
 static inline bool
 peek_one (gwbas_data * const b, uint8_t val)
 {
-  return (b->index < b->len) && (b->buffer[b->index] == val);
+  return (b->cur < b->end) && (*b->cur == val);
 }
 
 /* Peek ahead two bytes. */
 static inline bool
 peek_two (gwbas_data * const b, uint8_t val, uint8_t val2)
 {
-  return (b->index + 1 < b->len) &&
-    (b->buffer[b->index] == val) && (b->buffer[b->index + 1] == val2);
+  return (b->cur + 1 < b->end) &&
+    (b->cur[0] == val) && (b->cur[1] == val2);
 }
 
 /* Read a little-endian i16 from a byte iterator. */
 static int16_t
 read_i16 (gwbas_data * const b)
 {
-  int16_t b1 = read_u8 (b);
-  int16_t b2 = read_u8 (b);
+  if (b->cur + 1 >= b->end) return 0;
+  int16_t b1 = b->cur[0]; 
+  int16_t b2 = b->cur[1];
+  b->cur += 2;
   return (b2 << 8) | b1;
 }
 
@@ -149,8 +148,10 @@ read_i16 (gwbas_data * const b)
 static uint16_t
 read_u16 (gwbas_data * const b)
 {
-  uint16_t b1 = read_u8 (b);
-  uint16_t b2 = read_u8 (b);
+  if (b->cur + 1 >= b->end) return 0;
+  uint16_t b1 = b->cur[0]; 
+  uint16_t b2 = b->cur[1];
+  b->cur += 2;
   return (b2 << 8) | b1;
 }
 
@@ -164,10 +165,10 @@ read_f32 (gwbas_data * const b)
     float answer;
     uint8_t bs[4];
   } bytes;
-  bytes.bs[0] = read_u8 (b);
-  bytes.bs[1] = read_u8 (b);
-  bytes.bs[2] = read_u8 (b);
-  bytes.bs[3] = read_u8 (b);
+  if (b->cur + 4 >= b->end) return 0;
+  for (int i = 0; i < 4; ++i)
+    bytes.bs[i] = b->cur[i];
+  b->cur += 4;
 
   if (bytes.bs[3] == 0)
     return 0.0;
@@ -191,8 +192,10 @@ read_f64 (gwbas_data * const b)
     double answer;
     uint8_t bs[8];
   } bytes;
+  if (b->cur + 8 >= b->end) return 0;
   for (int i = 0; i < 8; ++i)
-    bytes.bs[i] = read_u8 (b);
+    bytes.bs[i] = b->cur[i];
+  b->cur += 8;
 
   if (bytes.bs[7] == 0)
     return 0.0;
@@ -231,19 +234,17 @@ load_buffer (gwbas_data * const b, const char *const fname)
     return false;
 
   /* initialize b */
-  b->len = sb.st_size;
-  b->index = 1;
-  b->buffer = mmap (NULL, b->len, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
-  if (b->buffer == MAP_FAILED)
+  if ((b->cur = mmap (NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
     return false;
+  b->end = b->cur + sb.st_size;
 
   /* decrypt b if necessary, and detect a bad 1st byte */
-  switch (b->buffer[0])
+  switch (*b->cur++)
     {
     case 0xff:
       break;
     case 0xfe:
-      decrypt_buffer (b->buffer, b->len);
+      decrypt_buffer (b->cur, b->end);
       break;
     default:
       return false;
@@ -263,17 +264,17 @@ parse_opcode (gwbas_data * const b)
   if (opcode == 0x3A && peek_one (b, 0xA1))
     {
       fputs ("ELSE", stdout);
-      b->index += 1;
+      ++b->cur;
     }
   else if (opcode == 0x3A && peek_two (b, 0x8F, 0xD9))
     {
       putchar ('\'');
-      b->index += 2;
+      b->cur += 2;
     }
   else if (opcode == 0xB1 && peek_one (b, 0xE9))
     {
       fputs ("WHILE", stdout);
-      b->index += 1;
+      ++b->cur;
     }
   else if (opcode >= 0x11 && opcode <= 0x1b)
     fputs (TOKENS[opcode - 0x11], stdout);
