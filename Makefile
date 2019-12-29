@@ -17,6 +17,8 @@ check:   bascat
 	./bascat tests/NEPTUNE.gwbas | diff --from-file=tests/NEPTUNE.txt -
 
 install: bascat
+	mkdir -p $(PREFIX)/bin $(PREFIX)/share/man/man1
 	cp bascat $(PREFIX)/bin
+	cp bascat.1 $(PREFIX)/share/man/man1
 
 .PHONY: indent clean check install

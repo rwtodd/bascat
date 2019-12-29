@@ -11,18 +11,18 @@ in ASCII.
 
                       ==[ Building/Installing ]==
 
-I've used GNU autotools for this project, so for most people it is as
-simple as:
+This version of bascat uses the UNIX `dc` program to convert the floats
+in a way that doesn't depend on the machine's endianness or floating-point
+representation.  The location it expects `dc` in is in the `config.h`
+file (default: /usr/bin/dc).
 
-    ./configure && make && sudo make install 
+Then, I use...
 
-if you download a distribution package.  If you are checking out the
-code from the repository, you'll need to run:
+    make check
+    make PREFIX=$HOME install
 
-    autoreconf -iv
-
-first to get all the infrastructure in place.
-
+... where PREFIX will default to `/usr` if I didn't specify it.  A man
+page is also installed.
 
                            ==[ Formatting ]==
 
