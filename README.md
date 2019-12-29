@@ -21,17 +21,7 @@ here:
 
 ## Multiple Languages
 
-I've written BasCat in multiple languages as a learning exercise.  Here are some, as of
-this writing:
-
- - Java [Java.BasCat repo](https://github.com/rwtodd/Java.bascat)
- - Scala [Scala.BasCat repo](https://github.com/rwtodd/Scala.BasCat)
- - Kotlin [Kotlin.BasCat repo](https://github.com/rwtodd/Kotlin.BasCat)
- - Go [Go.Bascat repo](https://github.com/rwtodd/Go.Bascat)
- - Python [SmallProgs 18 repo](https://github.com/rwtodd/small\_programs\_2018)
- - Common Lisp [rt-bascat repo](https://github.com/rwtodd/rt-bascat)
- - Older Java version [SmallProgs 18 repo](https://github.com/rwtodd/small\_programs\_2018)
- - CSharp [Csharp.BasCat repo](https://github.com/rwtodd/CSharp.BasCat)
- - Rust [Rust.Bascat repo](https://github.com/rwtodd/Rust.Bascat)
- - JavaScript  (in a private repo)
+I've written BasCat in multiple languages as a learning exercise. 
+They are mostly all in this repo, under different branches.  Check
+them out!
 
