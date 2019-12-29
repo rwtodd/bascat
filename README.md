@@ -9,9 +9,9 @@ Go, but it might be useful to someone.
 
 ## Multiple Languages
 
-The original version I did was in Go (in this repo). I did several other verisions in
-other languages (scala, java, kotlin, fsharp etc.), but they have since been removed 
-from this repo.  They are now elsewhere in my github account. 
+The original version I did was in Go (this branch). I did several other verisions in
+other languages, and most of those
+are in this repo in other branches (e.g. csharp-version, unix-version, etc.)
 
 ## Go Get
 
@@ -30,7 +30,7 @@ to test it on, so I don't know if it works.
 
 ## Licesnse
 
-I put this implementation under GPL V2
+I put this implementation under the MIT License. 
 
 ## Referece
 
