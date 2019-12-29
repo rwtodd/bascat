@@ -1,8 +1,7 @@
 /* vim: set shiftwidth=2 softtabstop=2 expandtab : */
-/* Copyright (c) 2018 Richard Todd.  
- * This program is GPLv2; see the LICENSE file */
+/* Copyright (c) 2018 Richard Todd.  MIT LICENSED */
 
-#include<stdint.h>
+#include<inttypes.h>
 #include<stdbool.h>
 #include<stdio.h>
 #include<sys/mman.h>
@@ -11,6 +10,62 @@
 #include<unistd.h>
 #include<fcntl.h>
 #include "config.h"
+
+static FILE *dc_out, *dc_in;    /* communication with the `dc` program */
+
+static bool
+init_dc (void)
+{
+  int fd1[2];
+  int fd2[2];
+  pid_t pid;
+  if ((pipe (fd1) < 0) || (pipe (fd2) < 0))
+    {
+      fputs (DC_PATH " pipe error!", stderr);
+      return false;
+    }
+  if ((pid = fork ()) < 0)
+    {
+      fputs (DC_PATH " fork error!", stderr);
+      return false;
+    }
+  else if (pid == 0)            /* child proc */
+    {
+      close (fd1[1]);
+      close (fd2[0]);
+      if (fd1[0] != STDIN_FILENO)
+        {
+          if (dup2 (fd1[0], STDIN_FILENO) != STDIN_FILENO)
+            {
+              fputs (DC_PATH " dup2 error!", stderr);
+            }
+          close (fd1[0]);
+        }
+      if (fd2[1] != STDOUT_FILENO)
+        {
+          if (dup2 (fd2[1], STDOUT_FILENO) != STDOUT_FILENO)
+            {
+              fputs (DC_PATH " dup2 error!", stderr);
+            }
+          close (fd2[1]);
+        }
+      if (execl (DC_PATH, "dc", (char *) 0) < 0)
+        {
+          fputs (DC_PATH " execl error!", stderr);
+          return false;
+        }
+    }
+  else
+    {                           /* parent proc */
+      close (fd1[0]);
+      close (fd2[1]);
+      dc_out = fdopen (fd1[1], "w");
+      dc_in = fdopen (fd2[0], "r");
+    }
+
+  return true;
+}
+
 
 static const char *TOKENS[] = {
   /* 0x11 - 0x1B */
@@ -129,16 +184,16 @@ peek_one (gwbas_data * const b, uint8_t val)
 static inline bool
 peek_two (gwbas_data * const b, uint8_t val, uint8_t val2)
 {
-  return (b->cur + 1 < b->end) &&
-    (b->cur[0] == val) && (b->cur[1] == val2);
+  return (b->cur + 1 < b->end) && (b->cur[0] == val) && (b->cur[1] == val2);
 }
 
 /* Read a little-endian i16 from a byte iterator. */
 static int16_t
 read_i16 (gwbas_data * const b)
 {
-  if (b->cur + 1 >= b->end) return 0;
-  int16_t b1 = b->cur[0]; 
+  if (b->cur + 1 >= b->end)
+    return 0;
+  int16_t b1 = b->cur[0];
   int16_t b2 = b->cur[1];
   b->cur += 2;
   return (b2 << 8) | b1;
@@ -148,8 +203,9 @@ read_i16 (gwbas_data * const b)
 static uint16_t
 read_u16 (gwbas_data * const b)
 {
-  if (b->cur + 1 >= b->end) return 0;
-  uint16_t b1 = b->cur[0]; 
+  if (b->cur + 1 >= b->end)
+    return 0;
+  uint16_t b1 = b->cur[0];
   uint16_t b2 = b->cur[1];
   b->cur += 2;
   return (b2 << 8) | b1;
@@ -160,26 +216,28 @@ read_u16 (gwbas_data * const b)
 static float
 read_f32 (gwbas_data * const b)
 {
-  union
-  {
-    float answer;
-    uint8_t bs[4];
-  } bytes;
-  if (b->cur + 4 >= b->end) return 0;
-  for (int i = 0; i < 4; ++i)
-    bytes.bs[i] = b->cur[i];
+  const uint8_t *const data = b->cur;
+  if ((data + 3 >= b->end) || (data[3] == 0))
+    return 0;
   b->cur += 4;
 
-  if (bytes.bs[3] == 0)
-    return 0.0;
-  else
+  char posneg = ((data[2] & 0x80) == 0) ? '+' : '-';
+  int exp = (int) data[3] - 129;
+  char negexp = ' ';
+  if (exp < 0)
     {
-      uint8_t sgn = bytes.bs[2] & 0x80;
-      uint8_t exp = (bytes.bs[3] - 2) & 0xff;
-      bytes.bs[3] = sgn | (exp >> 1);
-      bytes.bs[2] = ((exp << 7) | (bytes.bs[2] & 0x7f)) & 0xff;
-      return bytes.answer;
+      exp = -exp;
+      negexp = '_';
     }
+  const uint32_t denominator = UINT32_C (0x800000);
+  uint32_t numerator = ((uint32_t) data[0]) | ((uint32_t) data[1] << 8) |
+    ((uint32_t) data[2] << 16) | denominator;
+  fprintf (dc_out, "9k0 2%c%d^%c%" PRIu32 " %" PRIu32 "/*pc\n", negexp, exp,
+           posneg, numerator, denominator);
+  fflush (dc_out);
+  float result;
+  fscanf (dc_in, "%f", &result);
+  return result;
 }
 
 /* Read a MS MBF-style 64-bit float, and convert it to a modern IEEE double.
@@ -187,35 +245,30 @@ read_f32 (gwbas_data * const b)
 static double
 read_f64 (gwbas_data * const b)
 {
-  union
-  {
-    double answer;
-    uint8_t bs[8];
-  } bytes;
-  if (b->cur + 8 >= b->end) return 0;
-  for (int i = 0; i < 8; ++i)
-    bytes.bs[i] = b->cur[i];
+  const uint8_t *const data = b->cur;
+  if ((data + 7 >= b->end) || (data[7] == 0))
+    return 0;
   b->cur += 8;
 
-  if (bytes.bs[7] == 0)
-    return 0.0;
-  else
+  char posneg = ((data[6] & 0x80) == 0) ? '+' : '-';
+  int exp = (int) data[7] - 129;
+  char negexp = ' ';
+  if (exp < 0)
     {
-      uint8_t sgn = bytes.bs[6] & 0x80;
-      uint16_t exp = ((uint16_t) bytes.bs[3] - 128 - 1 + 1023) & 0xffff;
-      bytes.bs[7] = sgn | ((exp >> 4) & 0xff);
-      uint8_t left_over = ((exp << 4) & 0xff);
-      uint8_t tmp;
-      for (int idx = 6; idx > 0; --idx)
-        {
-          tmp = ((bytes.bs[idx] << 1) & 0xff) | (bytes.bs[idx - 1] >> 7);
-          bytes.bs[idx] = left_over | (tmp >> 4);
-          left_over = (tmp << 4) & 0xff;
-        }
-      tmp = (bytes.bs[0] << 1) & 0xff;
-      bytes.bs[0] = left_over | (tmp >> 4);
-      return bytes.answer;
+      exp = -exp;
+      negexp = '_';
     }
+  const uint64_t denominator = UINT64_C (0x80000000000000);
+  uint64_t numerator = ((uint64_t) data[0]) |
+    ((uint64_t) data[1] << 8) | ((uint64_t) data[2] << 16) |
+    ((uint64_t) data[3] << 24) | ((uint64_t) data[4] << 32) |
+    ((uint64_t) data[5] << 40) | ((uint64_t) data[6] << 48) | denominator;
+  fprintf (dc_out, "17k0 2%c%d^%c%" PRIu64 " %" PRIu64 "/*pc\n", negexp, exp,
+           posneg, numerator, denominator);
+  fflush (dc_out);
+  double result;
+  fscanf (dc_in, "%lf", &result);
+  return result;
 }
 
 /* Read the first byte of FNAME, and decrypt the file
@@ -234,7 +287,9 @@ load_buffer (gwbas_data * const b, const char *const fname)
     return false;
 
   /* initialize b */
-  if ((b->cur = mmap (NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)) == MAP_FAILED)
+  if ((b->cur =
+       mmap (NULL, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd,
+             0)) == MAP_FAILED)
     return false;
   b->end = b->cur + sb.st_size;
 
@@ -350,6 +405,13 @@ main (int argc, char **argv)
       fprintf (stderr, "Error loading buffer for %s\n", argv[1]);
       return 1;
     }
+
+  if (!init_dc ())
+    return 1;
+
   while (read_line (&bas))
     ;
+
+  fclose (dc_out);
+  fclose (dc_in);
 }
