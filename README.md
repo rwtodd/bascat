@@ -24,10 +24,6 @@ The documentation I used for the tokenized file format was here:
 ## Multiple Languages
 
 I've written BasCat in multiple languages as a learning exercise.
+Most of them are in this very repository, each in its own branch.
+Check them out!
 
- - Go [Go.Bascat repo](https://github.com/rwtodd/Go.Bascat)
- - Scala (in a private repo)
- - Java (in a private repo)
- - JavaScript  (in a private repo)
- - Kotlin [Kotlin.BasCat repo](https://github.com/rwtodd/Kotlin.BasCat)
- - Python [Small-Programs 2018 repo](https://github.com/rwtodd/small_programs_2018)
