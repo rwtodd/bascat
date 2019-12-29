@@ -11,7 +11,7 @@ indent: $(bascat_SOURCES)
 	indent $(srcs) --no-tabs
 
 clean:
-	rm bascat
+	-@rm -f bascat
 
 check:   bascat
 	./bascat tests/NEPTUNE.gwbas | diff --from-file=tests/NEPTUNE.txt -
