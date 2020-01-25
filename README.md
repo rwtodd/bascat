@@ -23,7 +23,7 @@ to test it on, so I don't know if it works.
 
 ## Licesnse
 
-I put this implementation under GPL V2
+I put this implementation under the MIT license 
 
 ## Referece
 
