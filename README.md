@@ -9,16 +9,9 @@ Go, but it might be useful to someone.
 
 ## Multiple Languages
 
-The original version I did was in Go (this branch). I did several other verisions in
-other languages, and most of those
-are in this repo in other branches (e.g. csharp-version, unix-version, etc.)
-
-## Go Get
-
-You should be able to install this utility with:
-
-    go get github.com/rwtodd/Go.Bascat/cmd/bascat
-
+The original version I did was in Go (in this branch). I did several other verisions in
+other languages (scala, java, kotlin, fsharp etc.), and most of them are on other
+branches of this repository.
 
 ## Unprotect Feature
 
@@ -30,7 +23,7 @@ to test it on, so I don't know if it works.
 
 ## Licesnse
 
-I put this implementation under the MIT License. 
+I put this implementation under GPL V2
 
 ## Referece
 

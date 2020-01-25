@@ -81,20 +81,23 @@ func (b *buffer) readF32() (out float64) {
 	// Read a MBF float, and build a float64 out of it
 	if bs[3] != 0 {
 		exp := int(bs[3]) - 129
-		var result big.Float
-		var denom big.Float
-		denom.SetPrec(64)
-		denom.SetInt64(0x800000)
-
-		result.SetPrec(64)
-		result.SetInt64(int64(uint64(bs[0]) |
-			(uint64(bs[1]) << 8) |
-			(uint64(bs[2]|0x80) << 16)))
-		result.Quo(&result, &denom)
-		if (bs[2] & 0x80) != 0 {
-			result.Neg(&result)
+		var product big.Rat
+		var tmpRat big.Rat
+		var tmpInt big.Int
+		if exp >= 0 {
+			product.SetInt(tmpInt.Lsh(big.NewInt(1), uint(exp)))
+		} else {
+			product.SetFrac(big.NewInt(1), tmpInt.Lsh(big.NewInt(1), uint(-exp)))
 		}
-		out, _ = result.SetMantExp(&result, exp).Float64()
+		product.Mul(&product, tmpRat.SetFrac64(int64(
+			uint64(bs[0])|
+				(uint64(bs[1])<<8)|
+				(uint64(bs[2]|0x80)<<16)), 1))
+		product.Mul(&product, tmpRat.SetFrac64(1, 0x800000))
+		if (bs[2] & 0x80) != 0 {
+			product.Neg(&product)
+		}
+		out, _ = product.Float64()
 	}
 	return
 }
@@ -106,25 +109,27 @@ func (b *buffer) readF64() (out float64) {
 	// Read a MBF float, and build a float64 out of it
 	if bs[7] != 0 {
 		exp := int(bs[7]) - 129
-		var denom big.Float
-		denom.SetPrec(64)
-		denom.SetInt64(0x80000000000000)
-
-		var result big.Float
-		result.SetPrec(64)
-		result.SetInt64(int64(
-			uint64(bs[0]) |
-				(uint64(bs[1]) << 8) |
-				(uint64(bs[2]) << 16) |
-				(uint64(bs[3]) << 24) |
-				(uint64(bs[4]) << 32) |
-				(uint64(bs[5]) << 40) |
-				(uint64(bs[6]|0x80) << 48)))
-		result.Quo(&result, &denom)
-		if (bs[6] & 0x80) != 0 {
-			result.Neg(&result)
+		var product big.Rat
+		var tmpRat big.Rat
+		var tmpInt big.Int
+		if exp >= 0 {
+			product.SetInt(tmpInt.Lsh(big.NewInt(1), uint(exp)))
+		} else {
+			product.SetFrac(big.NewInt(1), tmpInt.Lsh(big.NewInt(1), uint(-exp)))
 		}
-		out, _ = result.SetMantExp(&result, exp).Float64()
+		product.Mul(&product, tmpRat.SetFrac64(int64(
+			uint64(bs[0])|
+				(uint64(bs[1])<<8)|
+				(uint64(bs[2])<<16)|
+				(uint64(bs[3])<<24)|
+				(uint64(bs[4])<<32)|
+				(uint64(bs[5])<<40)|
+				(uint64(bs[6]|0x80)<<48)), 1))
+		product.Mul(&product, tmpRat.SetFrac64(1, 0x80000000000000))
+		if (bs[2] & 0x80) != 0 {
+			product.Neg(&product)
+		}
+		out, _ = product.Float64()
 	}
 	return
 }
