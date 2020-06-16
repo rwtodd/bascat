@@ -1,0 +1,455 @@
+\input texinfo
+@include version.texi
+@settitle BasCat @value{VERSION}
+@setfilename bascat.info
+
+@dircategory General Commands
+@direntry
+* bascat: (bascat).   Decode GW-BASiC/BASICA files.
+@end direntry
+
+@setchapternewpage off
+@copying
+
+Copyright @copyright{} 2020 Richard Todd
+@end copying
+
+@titlepage
+@title BasCat
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@c Output the table of the contents at the beginning.
+@contents
+
+@ifnottex
+@node Top
+@top BasCat 
+
+This manual is for BasCat
+(version @value{VERSION}, @value{UPDATED}).
+@end ifnottex
+
+@chapter Overview
+
+@code{Bascat} reads @file{.BAS} files saved in the default binary format by
+@sc{gw-basic} and @sc{basica}, outputting plain text. This allows the code to
+be studied or ported without needing to run the interpreters in a virtual
+machine.  Run the program like so: 
+
+@example
+bascat @var{filename}
+@end example
+
+It was possible to save tokenized files encrypted, though I don't have any
+actual examples of encrypted files. The program will attempt to decode an
+encrypted file via an algorithm I found in the 
+@uref{http://sourceforge.net/p/pcbasic/wiki/Home/, PC-BASIC project}.
+However, since I don't have any protected @file{.BAS} files, I have not
+tested that code.
+
+A reference for the @sc{gw-basic} tokens can be found here:
+@uref{http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html}.
+
+@menu
+* GW-BASIC Tokens::   The token-set used by bascat
+* Other Port Notes::  Ports of bascat in other languages
+@end menu
+
+@node GW-BASIC Tokens
+@chapter GW-BASIC Tokens
+
+Here are the tokens used by @code{bascat}:
+
+@table @code
+@item 0x81
+END
+@item 0x82
+FOR
+@item 0x83
+NEXT
+@item 0x84
+DATA
+@item 0x85
+INPUT
+@item 0x86
+DIM
+@item 0x87
+READ
+@item 0x88
+LET
+@item 0x89
+GOTO
+@item 0x8A
+RUN
+@item 0x8B
+IF
+@item 0x8C
+RESTORE
+@item 0x8D
+GOSUB
+@item 0x8E
+RETURN
+@item 0x8F
+REM
+@item 0x90
+STOP
+@item 0x91
+PRINT
+@item 0x92
+CLEAR
+@item 0x93
+LIST
+@item 0x94
+NEW
+@item 0x95
+ON
+@item 0x96
+WAIT
+@item 0x97
+DEF
+@item 0x98
+POKE
+@item 0x99
+CONT
+@item 0x9C
+OUT
+@item 0x9D
+LPRINT
+@item 0x9E
+LLIST
+@item 0xA0
+WIDTH
+@item 0xA1
+ELSE
+@item 0xA2
+TRON
+@item 0xA3
+TROFF
+@item 0xA4
+SWAP
+@item 0xA5
+ERASE
+@item 0xA6
+EDIT
+@item 0xA7
+ERROR
+@item 0xA8
+RESUME
+@item 0xA9
+DELETE
+@item 0xAA
+AUTO
+@item 0xAB
+RENUM
+@item 0xAC
+DEFSTR
+@item 0xAD
+DEFINT
+@item 0xAE
+DEFSNG
+@item 0xAF
+DEFDBL
+@item 0xB0
+LINE
+@item 0xB1
+WHILE
+@item 0xB2
+WEND
+@item 0xB3
+CALL
+@item 0xB7
+WRITE
+@item 0xB8
+OPTION
+@item 0xB9
+RANDOMIZE
+@item 0xBA
+OPEN
+@item 0xBB
+CLOSE
+@item 0xBC
+LOAD
+@item 0xBD
+MERGE
+@item 0xBE
+SAVE
+@item 0xBF
+COLOR
+@item 0xC0
+CLS
+@item 0xC1
+MOTOR
+@item 0xC2
+BSAVE
+@item 0xC3
+BLOAD
+@item 0xC4
+SOUND
+@item 0xC5
+BEEP
+@item 0xC6
+PSET
+@item 0xC7
+PRESET
+@item 0xC8
+SCREEN
+@item 0xC9
+KEY
+@item 0xCA
+LOCATE
+@item 0xCC
+TO
+@item 0xCD
+THEN
+@item 0xCE
+TAB(
+@item 0xCF
+STEP
+@item 0xD0
+USR
+@item 0xD1
+FN
+@item 0xD2
+SPC(
+@item 0xD3
+NOT
+@item 0xD4
+ERL
+@item 0xD5
+ERR
+@item 0xD6
+STRING$
+@item 0xD7
+USING
+@item 0xD8
+INSTR
+@item 0xD9
+'
+@item 0xDA
+VARPTR
+@item 0xDB
+CSRLIN
+@item 0xDC
+POINT
+@item 0xDD
+OFF
+@item 0xDE
+INKEY$
+@item 0xE6
+>
+@item 0xE7
+=
+@item 0xE8
+<
+@item 0xE9
++
+@item 0xEA
+-
+@item 0xEB
+*
+@item 0xEC
+/
+@item 0xED
+^
+@item 0xEE
+AND
+@item 0xEF
+OR
+@item 0xF0
+XOR
+@item 0xF1
+EQV
+@item 0xF2
+IMP
+@item 0xF3
+MOD
+@item 0xF4
+\
+@item 0xFD81
+CVI
+@item 0xFD82
+CVS
+@item 0xFD83
+CVD
+@item 0xFD84
+MKI$
+@item 0xFD85
+MKS$
+@item 0xFD86
+MKD$
+@item 0xFD8B
+EXTERR
+@item 0xFE81
+FILES
+@item 0xFE82
+FIELD
+@item 0xFE83
+SYSTEM
+@item 0xFE84
+NAME
+@item 0xFE85
+LSET
+@item 0xFE86
+RSET
+@item 0xFE87
+KILL
+@item 0xFE88
+PUT
+@item 0xFE89
+GET
+@item 0xFE8A
+RESET
+@item 0xFE8B
+COMMON
+@item 0xFE8C
+CHAIN
+@item 0xFE8D
+DATE$
+@item 0xFE8E
+TIME$
+@item 0xFE8F
+PAINT
+@item 0xFE90
+COM
+@item 0xFE91
+CIRCLE
+@item 0xFE92
+DRAW
+@item 0xFE93
+PLAY
+@item 0xFE94
+TIMER
+@item 0xFE95
+ERDEV
+@item 0xFE96
+IOCTL
+@item 0xFE97
+CHDIR
+@item 0xFE98
+MKDIR
+@item 0xFE99
+RMDIR
+@item 0xFE9A
+SHELL
+@item 0xFE9B
+ENVIRON
+@item 0xFE9C
+VIEW
+@item 0xFE9D
+WINDOW
+@item 0xFE9E
+PMAP
+@item 0xFE9F
+PALETTE
+@item 0xFEA0
+LCOPY
+@item 0xFEA1
+CALLS
+@item 0xFEA4
+NOISE
+@item 0xFEA5
+PCOPY
+@item 0xFEA6
+TERM 
+@item 0xFEA7
+LOCK
+@item 0xFEA8
+UNLOCK
+@item 0xFF81
+LEFT$
+@item 0xFF82
+RIGHT$
+@item 0xFF83
+MID$
+@item 0xFF84
+SGN
+@item 0xFF85
+INT
+@item 0xFF86
+ABS
+@item 0xFF87
+SQR
+@item 0xFF88
+RND
+@item 0xFF89
+SIN
+@item 0xFF8A
+LOG
+@item 0xFF8B
+EXP
+@item 0xFF8C
+COS
+@item 0xFF8D
+TAN
+@item 0xFF8E
+ATN
+@item 0xFF8F
+FRE
+@item 0xFF90
+INP
+@item 0xFF91
+POS
+@item 0xFF92
+LEN
+@item 0xFF93
+STR$
+@item 0xFF94
+VAL
+@item 0xFF95
+ASC
+@item 0xFF96
+CHR$
+@item 0xFF97
+PEEK
+@item 0xFF98
+SPACE$
+@item 0xFF99
+OCT$
+@item 0xFF9A
+HEX$
+@item 0xFF9B
+LPOS
+@item 0xFF9C
+CINT
+@item 0xFF9D
+CSNG
+@item 0xFF9E
+CDBL
+@item 0xFF9F
+FIX
+@item 0xFFA0
+PEN
+@item 0xFFA1
+STICK
+@item 0xFFA2
+STRIG
+@item 0xFFA3
+EOF
+@item 0xFFA4
+LOC
+@item 0xFFA5
+LOF 
+@end table
+
+@node Other Port Notes
+@chapter Other Port Notes
+
+The @uref{https://github.com/rwtodd/bascat, bascat github repo} is a bit
+unusual, in that it uses individual orphan branches for different
+implementations of the tool.  There are versions in Java, Go, a Win32
+version, and more.
+
+To check out just a single version, you can ask @code{git} for a single branch:
+
+@example
+git clone --single-branch --branch=<name> https://github.com/rwtodd/bascat
+@end example
+
+@bye
+
+@c Local Variables:
+@c fill-column: 77
+@c End:

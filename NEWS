@@ -1,0 +1,12 @@
+N E W S
+-------
+
+2019-12-28:
+
+  Changed the unix version of bascat so that it reaches out to the system
+  dc binary for arbitrary-precision calculations, rather than make
+  assumptions about IEEE floats or machine endianness.
+  
+2018-09-26:
+
+  Converted project to Autotools/GNU-ish format, and added an INFO manual.

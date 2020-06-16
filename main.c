@@ -1,4 +1,3 @@
-/* vim: set shiftwidth=2 softtabstop=2 expandtab : */
 /* Copyright (c) 2018 Richard Todd.  MIT LICENSED */
 
 #include<inttypes.h>
@@ -13,6 +12,7 @@
 
 static FILE *dc_out, *dc_in;    /* communication with the `dc` program */
 
+/* Call out to the `dc` standard unix tool, with a bi-directional pipe. */
 static bool
 init_dc (void)
 {
