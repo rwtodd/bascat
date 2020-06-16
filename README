@@ -1,41 +1,37 @@
-                          ==[ bascat v1.0 ]==
+			     ==[ bascat v1.1 ]==
 
 A c (unix) program to decode GW-BASIC/BASICA tokenized files.
 
-There are many more versions of this program in this repository. Each
-has its own branch (scala-version, win32-version, and so forth).
+There are many more versions of this program in this repository. Each has its
+own branch (scala-version, win32-version, and so forth).
 
 
-                          ==[ Motivation ]==
+			     ==[ Motivation ]==
 
 There are actually a fair amount of .BAS files out there in the default
-tokenized format, but you'd need a working GWBASIC/BASICA to see the
-source.  bascat is a program to print out tokenized gwbasic .BAS files
-in ASCII.
+tokenized format, but you'd need a working GWBASIC/BASICA to see the source.
+bascat is a program to print out tokenized gwbasic .BAS files in ASCII.
 
 
 
-                      ==[ Building/Installing ]==
+			 ==[ Building/Installing ]==
 
-This version of bascat uses the UNIX `dc` program to convert the floats
-in a way that doesn't depend on the machine's endianness or floating-point
-representation.  The location it expects `dc` in is in the `config.h`
-file (default: /usr/bin/dc).
+This version of bascat uses the UNIX `dc` program to convert the floats in a
+way that doesn't depend on the machine's endianness or floating-point
+representation.  The autoconf script searches for it, but you can override
+the location if it can't be found automatically for some reason.
 
-Then, I use...
+It's an autotools project.  Just:
 
-    make check
-    make PREFIX=$HOME install
+    configure && make && sudo make install
 
-... where PREFIX will default to `/usr` if I didn't specify it.  A man
-page is also installed.
+or whatever you like to do.
 
 
-                           ==[ Formatting ]==
+			     ==[ Formatting ]==
 
 I use GNU indent:
 
     indent main.c --no-tabs
 
 It's available in the makefile as `make indent`.
-
