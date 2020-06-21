@@ -1,4 +1,4 @@
-.TH bascat "1" "15 March 2016" "" "Utility"
+.TH bascat "1" "19 February 2016" "@PACKAGE_STRING@" "Utility"
 .SH NAME
 bascat -- decode binary 
 .SM "GW\-BASIC"

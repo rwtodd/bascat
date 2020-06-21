@@ -6,7 +6,7 @@ AC_INIT([bascat], [1.1], [https://github.com/rwtodd/bascat])
 AC_CONFIG_SRCDIR([main.c])
 AC_CONFIG_HEADERS([config.h])
 
-AM_INIT_AUTOMAKE([foreign])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 
 # Checks for programs.
 AC_PROG_CC
@@ -31,5 +31,5 @@ if test "x$ac_cv_func_mmap_fixed_mapped" != xyes ; then
   AC_MSG_ERROR([You must have a working mmap() function!])
 fi
 
-AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([Makefile bascat.1])
 AC_OUTPUT
