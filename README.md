@@ -21,6 +21,17 @@ encrypted BAS files to test it on, so I don't know if it works.
 The documentation I used for the tokenized file format was here:
 [http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html](http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html).
 
+## Building .EXE
+
+In sbcl...
+
+    (require 'asdf)
+    (asdf:make "rt-bascat")
+
+For ECL...
+
+    (load "build_for_ecl.lisp")
+
 ## Multiple Languages
 
 I've written BasCat in multiple languages as a learning exercise.
