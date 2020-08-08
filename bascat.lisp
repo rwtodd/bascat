@@ -329,3 +329,10 @@
 		       :direction :input
 		       :element-type '(unsigned-byte 8))
 		  (display-gwbas (get-reader inp) stream)))
+
+(defun bascat-main ()
+  (let ((args (uiop:command-line-arguments)))
+     (if (null args)
+        (format t "usage: bascat <gwbas-file>~%")
+        (bascat (first args)))))
+
