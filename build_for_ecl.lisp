@@ -4,13 +4,18 @@
 (require 'asdf)
 (require 'cmp)
 
-(mapc #'(lambda (fl) (compile-file fl :system-p t)) 
-   '("packages.lisp" "bascat.lisp"))
+(defvar *files* (list "packages" "bascat"))
 
-(c:build-program "bascat" :lisp-files '("packages.obj" "bascat.obj")
-  :epilogue-code  '(progn (rt-bascat:bascat-main)(si:exit)))
-;;   '(let ((args (cdr (ext:command-args))))
-;;      (if (null args)
-;;         (format t "usage: bascat <gwbas-file>~%")
-;;         (rt-bascat:bascat (first args)))))
-;;
+(mapc #'(lambda (fl)
+	  (compile-file (concatenate 'string fl ".lisp")
+			:system-p t))
+      *files*)
+
+(c:build-program "bascat"
+		 :lisp-files
+		 (mapcar #'(lambda (fl) (concatenate 'string fl ".obj"))
+			 *files*)
+		 :epilogue-code
+		 '(progn (rt-bascat:bascat-main)(si:exit)))
+
+(si:exit)

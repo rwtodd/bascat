@@ -331,8 +331,18 @@
 		  (display-gwbas (get-reader inp) stream)))
 
 (defun bascat-main ()
-  (let ((args #+ecl(cdr (ext:command-args))
-              #-ecl(uiop:command-line-arguments)))
-     (if (null args)
-        (format t "usage: bascat <gwbas-file>~%")
-        (bascat (first args)))))
+  (flet ((err-exit () #+sbcl(sb-ext:exit :code 1) #+ecl(si:exit 1)))
+    (let ((args #+ecl(cdr (ext:command-args))
+		#-ecl(uiop:command-line-arguments)))
+      (handler-case 
+	  (ccase (length args)
+	    (1 (bascat (first args))))
+	(type-error ()
+	  (format *error-output* "Usage: bascat file.gwbas~%")
+	  (err-exit))
+	(t (msg)
+	  (format *error-output* "Erorr: ~a~%" msg)
+	  (err-exit))))))
+
+
+
