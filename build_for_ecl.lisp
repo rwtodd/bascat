@@ -3,19 +3,10 @@
 
 (require 'asdf)
 (require 'cmp)
-
-(defvar *files* (list "packages" "bascat"))
-
-(mapc #'(lambda (fl)
-	  (compile-file (concatenate 'string fl ".lisp")
-			:system-p t))
-      *files*)
-
-(c:build-program "bascat"
-		 :lisp-files
-		 (mapcar #'(lambda (fl) (concatenate 'string fl ".obj"))
-			 *files*)
+(asdf:load-system "rt-bascat")  ;; seems necessary, even though it shouldn't be
+(asdf:make-build "rt-bascat"
+                 :type :program
+                 :move-here #P"./"
 		 :epilogue-code
 		 '(progn (rt-bascat:bascat-main)(si:exit)))
-
 (si:exit)
