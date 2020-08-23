@@ -110,7 +110,7 @@ object StreamState {
           case (None, s2) => { more = false; state = s2 }
         }
      }
-     (builder.result, state)
+     (builder.result(), state)
   })
 }
 

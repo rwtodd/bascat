@@ -1,12 +1,13 @@
 import Dependencies._
 
-lazy val root = (project in file(".")).
-  settings(
-    inThisBuild(List(
-      organization := "org.rwtodd",
-      scalaVersion := "2.13.0",
-      version      := "1.0"
-    )),
-    name := "bascat",
-    // libraryDependencies += argparse
-  )
+ThisBuild / scalaVersion := "2.13.3"
+ThisBuild / version      := "1.0"
+ThisBuild / organization := "org.rwtodd.bascat"
+
+lazy val root = (project in file("."))
+	.settings(
+		scalacOptions ++= Seq("-target:11", "-deprecation"),
+		name := "bascat"
+	)
+
+// vim: filetype=sbt:noet:tabstop=4:autoindent
