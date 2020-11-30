@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace RWTodd.BasCat
+namespace RWTodd.GWBasic
 {
     sealed class BinReader
     {

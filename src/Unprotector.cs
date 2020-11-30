@@ -1,4 +1,4 @@
-﻿namespace RWTodd.BasCat
+﻿namespace RWTodd.GWBasic
 {
     internal sealed class Unprotector
     {

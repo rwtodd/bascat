@@ -1,0 +1,95 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<helpItems schema="maml" xmlns="http://msh">
+  <command:command xmlns:maml="http://schemas.microsoft.com/maml/2004/10" xmlns:command="http://schemas.microsoft.com/maml/dev/command/2004/10" xmlns:dev="http://schemas.microsoft.com/maml/dev/2004/10" xmlns:MSHelp="http://msdn.microsoft.com/mshelp">
+    <command:details>
+      <command:name>ConvertFrom-GWBasic</command:name>
+      <command:verb>ConvertFrom</command:verb>
+      <command:noun>GWBasic</command:noun>
+      <maml:description>
+        <maml:para>Convert a GWBASIC or BASICA tokenized basic file to plain text.</maml:para>
+      </maml:description>
+    </command:details>
+    <maml:description>
+      <maml:para>Old DOS basic interpreters saved their source files in tokenized format.  This command converts from that tokenized format to plain text, which it outputs.</maml:para>
+      <maml:para>It was possible to save your file encrypted in GW-BASIC, and I found the decryption algorithm in the PC-BASIC project (http://sourceforge.net/p/pcbasic/wiki/Home/). So, I implemented that decryption scheme... however I do not have any encrypted BAS files to test it on, so I don't know if it works.</maml:para>
+    </maml:description>
+    <command:syntax>
+      <command:syntaxItem>
+        <maml:name>ConvertFrom-GWBasic</maml:name>
+        <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="True (ByPropertyName, ByValue)" position="0" aliases="none">
+          <maml:name>BasFile</maml:name>
+          <maml:Description>
+            <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.</maml:para>
+          </maml:Description>
+          <command:parameterValue required="true" variableLength="false">FileInfo</command:parameterValue>
+          <dev:type>
+            <maml:name>FileInfo</maml:name>
+            <maml:uri />
+          </dev:type>
+          <dev:defaultValue>None</dev:defaultValue>
+        </command:parameter>
+      </command:syntaxItem>
+    </command:syntax>
+    <command:parameters>
+      <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="True (ByPropertyName, ByValue)" position="0" aliases="none">
+        <maml:name>BasFile</maml:name>
+        <maml:Description>
+          <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.</maml:para>
+        </maml:Description>
+        <command:parameterValue required="true" variableLength="false">FileInfo</command:parameterValue>
+        <dev:type>
+          <maml:name>FileInfo</maml:name>
+          <maml:uri />
+        </dev:type>
+        <dev:defaultValue>None</dev:defaultValue>
+      </command:parameter>
+    </command:parameters>
+    <command:inputTypes>
+      <command:inputType>
+        <dev:type>
+          <maml:name>System.IO.FileInfo</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>A Tokenized basic file.</maml:para>
+        </maml:description>
+      </command:inputType>
+    </command:inputTypes>
+    <command:returnValues>
+      <command:returnValue>
+        <dev:type>
+          <maml:name>System.String</maml:name>
+        </dev:type>
+        <maml:description>
+          <maml:para>The plain text conversion of the input file.</maml:para>
+        </maml:description>
+      </command:returnValue>
+    </command:returnValues>
+    <maml:alertSet>
+      <maml:alert>
+        <maml:para></maml:para>
+      </maml:alert>
+    </maml:alertSet>
+    <command:examples>
+      <command:example>
+        <maml:title>-------------------------- Example 1 --------------------------</maml:title>
+        <dev:code>PS C:\&gt; ConvertFrom-GWBasic myfile.bas &gt; myfile.bas.txt</dev:code>
+        <dev:remarks>
+          <maml:para>Converts `myfile.bas` to plain text, and saves that text into `myfile.bas.txt`.</maml:para>
+        </dev:remarks>
+      </command:example>
+      <command:example>
+        <maml:title>-------------------------- Example 2 --------------------------</maml:title>
+        <dev:code>PS C:\&gt; gci *.gwbas | ConvertFrom-GWBasic -Verbose</dev:code>
+        <dev:remarks>
+          <maml:para>Converts all the .gwbas files in the directory to plain text and outputs to the console. The `-Verbose` flag outputs a line between the files indicating the file name to be parsed.</maml:para>
+        </dev:remarks>
+      </command:example>
+    </command:examples>
+    <command:relatedLinks>
+      <maml:navigationLink>
+        <maml:linkText>GW-BASIC Token List</maml:linkText>
+        <maml:uri>http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html</maml:uri>
+      </maml:navigationLink>
+    </command:relatedLinks>
+  </command:command>
+</helpItems>

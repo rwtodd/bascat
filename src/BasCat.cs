@@ -1,8 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Text;
-using System.Threading.Tasks;
 
-namespace RWTodd.BasCat
+namespace RWTodd.GWBasic
 {
     internal sealed class BasCat
     {
@@ -38,7 +38,7 @@ namespace RWTodd.BasCat
                     tw.Write('\''); rdr.Skip(2); break;
                 case 0xB1 when rdr.Peek(0xE9):
                     tw.Write("WHILE"); rdr.Skip(1); break;
-                case 0x00: tw.WriteLine(); hasMore = false; break;
+                case 0x00: hasMore = false; break;
                 case 0x0B: tw.Write("&O{0}", Convert.ToString(rdr.ReadS16(), 8)); break;
                 case 0x0C: tw.Write("&H{0:x}", rdr.ReadS16()); break;
                 case 0x0E: tw.Write(rdr.ReadU16()); break;
@@ -65,22 +65,20 @@ namespace RWTodd.BasCat
             return hasMore;
         }
 
-        internal async Task PrintAllLinesAsync(System.IO.TextWriter tw)
+        internal IEnumerable<string> GetAllLines() 
         {
             var sb = new StringBuilder(120);
             var sw = new System.IO.StringWriter(sb);
-            Task? lineWrite = null;
             while (!rdr.EOF)
             {
                 if (rdr.ReadU16() == 0) break;  // 0 pointer == EOF
                 sw.Write(rdr.ReadU16());
                 sw.Write("  ");
                 while(PrintToken(sw)) {  /* nothing */ }
-                if (lineWrite != null) await lineWrite;
-                lineWrite = tw.WriteAsync(sw.ToString());
+                yield return sw.ToString();
                 sb.Clear();
             }
-            if (lineWrite != null) await lineWrite;
+            yield break;
         }
 
         private static readonly String[] Tokens =

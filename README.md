@@ -1,17 +1,12 @@
-# BasCat
+# RWTodd.GWBasic PS Module
 
-`bascat` is a program to print out tokenized gwbasic .BAS files in ASCII.
-There are actually a fair amount of .BAS files out there in the default tokenized
-format, but you'd need a working GWBASIC/BASICA to see the source.
+This is a PowerShell Module for converting old tokenized .BAS files to plain text.  It provides a
+single cmdlet, `ConvertFrom-GWBasic`, which does the work.
 
-This is a CSharp/DotNet Core version.  I have implemented the program in many languages before, 
-but this is among the simplest of them.  In some previous versions,
-I parse the input into a Token stream, and then clean up and print the stream.
-At the time, I was thinking about the ability to run statistics on the tokens
-and similar uses, but at this point I consider that overkill. This version
-just prints the tokens directly.
+In other branches of this repository I have console programs to do the same thing in
+many languages.  If you prefer, get one of those running.
 
-## Decryption
+## Note: Decryption
 
 It was possible to save your file encrypted in GW-BASIC, and I found the
 decryption
@@ -26,10 +21,3 @@ to test it on, so I don't know if it works.
 The documentation I used for the tokenized file format was
 here:
 [http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html](http://chebucto.ns.ca/~af380/GW-BASIC-tokens.html).
-
-## Multiple Languages
-
-I've written BasCat in multiple languages as a learning exercise.
-Most of them are in this repo, each in its own branch (e.g., scala-version,
-unix-version, etc.)
-
