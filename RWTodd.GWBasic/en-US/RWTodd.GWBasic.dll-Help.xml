@@ -19,11 +19,11 @@
         <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="True (ByPropertyName, ByValue)" position="0" aliases="none">
           <maml:name>BasFile</maml:name>
           <maml:Description>
-            <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.</maml:para>
+            <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.  It is a literal path (no wildcards).  If you need wildcards, pipe items into the cmdlet instead.</maml:para>
           </maml:Description>
-          <command:parameterValue required="true" variableLength="false">FileInfo</command:parameterValue>
+          <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
           <dev:type>
-            <maml:name>FileInfo</maml:name>
+            <maml:name>String</maml:name>
             <maml:uri />
           </dev:type>
           <dev:defaultValue>None</dev:defaultValue>
@@ -34,11 +34,11 @@
       <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="True (ByPropertyName, ByValue)" position="0" aliases="none">
         <maml:name>BasFile</maml:name>
         <maml:Description>
-          <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.</maml:para>
+          <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.  It is a literal path (no wildcards).  If you need wildcards, pipe items into the cmdlet instead.</maml:para>
         </maml:Description>
-        <command:parameterValue required="true" variableLength="false">FileInfo</command:parameterValue>
+        <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
         <dev:type>
-          <maml:name>FileInfo</maml:name>
+          <maml:name>String</maml:name>
           <maml:uri />
         </dev:type>
         <dev:defaultValue>None</dev:defaultValue>
@@ -47,10 +47,10 @@
     <command:inputTypes>
       <command:inputType>
         <dev:type>
-          <maml:name>System.IO.FileInfo</maml:name>
+          <maml:name>System.String</maml:name>
         </dev:type>
         <maml:description>
-          <maml:para>A Tokenized basic file.</maml:para>
+          <maml:para>The name of a tokenized basic file.</maml:para>
         </maml:description>
       </command:inputType>
     </command:inputTypes>

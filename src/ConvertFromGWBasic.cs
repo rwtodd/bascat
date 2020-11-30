@@ -14,7 +14,7 @@ namespace RWTodd.GWBasic
             Position = 0,
             ValueFromPipeline = true,
             ValueFromPipelineByPropertyName = true)]
-        public FileInfo BasFile { get; set; }
+        public string BasFile { get; set; }
 
 
         // This method gets called once for each cmdlet in the pipeline when the pipeline starts executing
@@ -25,14 +25,16 @@ namespace RWTodd.GWBasic
         // This method will be called for each input received from the pipeline to this cmdlet; if no input is received, this method is not called
         protected override void ProcessRecord()
         {
-            WriteVerbose($"Opening ${BasFile.Name}");
+            var fullname = GetUnresolvedProviderPathFromPSPath(BasFile);
+            WriteVerbose($"Resolved ${BasFile} to ${fullname}");
             
-            if(BasFile.Length > 262144L) {
+            var finfo = new FileInfo(fullname);            
+            if(finfo.Length > 262144L) {
                 WriteError(new ErrorRecord(new ArgumentException("File is too large!"), "TOOLARGE", ErrorCategory.LimitsExceeded, BasFile));
                 return;
             }
 
-            foreach(string line in new BasCat(File.ReadAllBytes(BasFile.FullName)).GetAllLines() ) {
+            foreach(string line in new BasCat(File.ReadAllBytes(fullname)).GetAllLines() ) {
                 WriteObject(line,false);
             }
 

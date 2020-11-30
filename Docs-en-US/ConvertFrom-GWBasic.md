@@ -13,7 +13,7 @@ Convert a GWBASIC or BASICA tokenized basic file to plain text.
 ## SYNTAX
 
 ```
-ConvertFrom-GWBasic [-BasFile] <FileInfo> [<CommonParameters>]
+ConvertFrom-GWBasic [-BasFile] <String> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -40,10 +40,10 @@ Converts all the .gwbas files in the directory to plain text and outputs to the 
 ## PARAMETERS
 
 ### -BasFile
-The GWBASIC/BASICA tokenized file to convert to plain text.
+The GWBASIC/BASICA tokenized file to convert to plain text.  It is a literal path (no wildcards).  If you need wildcards, pipe items into the cmdlet instead.
 
 ```yaml
-Type: FileInfo
+Type: String
 Parameter Sets: (All)
 Aliases:
 
@@ -59,8 +59,8 @@ This cmdlet supports the common parameters: -Debug, -ErrorAction, -ErrorVariable
 
 ## INPUTS
 
-### System.IO.FileInfo
-A Tokenized basic file.
+### System.String
+The name of a tokenized basic file.
 
 ## OUTPUTS
 
