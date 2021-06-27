@@ -74,39 +74,30 @@ func decrypt_buffer(_ buf: inout [UInt8]) {
 }
 
 struct DataReader {
-   private let src      : [UInt8]
-   private let count    : Int
-   private var idx      : Int = 1
+   private let src : [UInt8]
+   private var idx : Int = 1
 
-   init(fromBytes src: [UInt8]) {
-      self.src = src
-      count    = src.count
-   }
+   init(fromBytes src: [UInt8]) { self.src = src }
 
    init?(fromFile fname: String) {
-     if let data = NSData(contentsOfFile: fname) {
-        if data.length == 0 { return nil }
-
-        var buffer = [UInt8](repeating: 0, count: data.length)
-        data.getBytes(&buffer, length: data.length)
-        if buffer[0] == 0xfe {
-           decrypt_buffer(&buffer)
-        }
-        if buffer[0] == 0xff {
-	   src   = buffer
-           count = src.count
-        } else {
-	   return nil
-	}
-
-     } else {
-        return nil  // file didn't open or didn't look like GWBASIC
+     guard let data = NSData(contentsOfFile: fname), data.length > 0 else {
+        return nil
      }
 
+     var buffer = [UInt8](repeating: 0, count: data.length)
+     data.getBytes(&buffer, length: data.length)
+     if buffer[0] == 0xfe {
+         decrypt_buffer(&buffer)
+     }
+     guard buffer[0] == 0xff else {
+         return nil
+     }
+
+     src   = buffer
    }
 
    mutating func read_u8() -> UInt8 {
-      guard idx < count else { return 0 }
+      guard idx < src.count else { return 0 }
 
       let answer = src[idx]
       idx += 1
@@ -114,11 +105,11 @@ struct DataReader {
    }
 
    // Peek ahead a byte.
-   func peek(next val: UInt8) -> Bool { (idx < count) && (src[idx] == val) }
+   func peek(next val: UInt8) -> Bool { (idx < src.count) && (src[idx] == val) }
 
    // Peek ahead two bytes.
    func peek(next val1: UInt8, and val2: UInt8) -> Bool {
-      (idx+1 < count) && (src[idx] ==  val1) && (src[idx+1] == val2)
+      (idx+1 < src.count) && (src[idx] ==  val1) && (src[idx+1] == val2)
    }
 
    // Read a little-endian i16 from a byte iterator.
@@ -205,9 +196,7 @@ func parse_opcode(from dr: inout DataReader,
 func read_line(from dr: inout DataReader, to buf: inout String) {
   if dr.read_u16() != 0 {
      print(dr.read_u16(), terminator: "  ", to: &buf)
-     while parse_opcode(from: &dr, to: &buf) {
-        // nothing!
-     }
+     while parse_opcode(from: &dr, to: &buf) {  }
   }
 }
 
