@@ -74,9 +74,9 @@ func decrypt_buffer(_ buf: inout [UInt8]) {
 }
 
 struct DataReader {
-   let src      : [UInt8]
-   let count    : Int
-   var idx      : Int = 1
+   private let src      : [UInt8]
+   private let count    : Int
+   private var idx      : Int = 1
 
    init(fromBytes src: [UInt8]) {
       self.src = src
@@ -106,24 +106,19 @@ struct DataReader {
    }
 
    mutating func read_u8() -> UInt8 {
-      if idx < count {
-         let answer = src[idx]
-	 idx += 1
-	 return answer
-      }
-      return 0
+      guard idx < count else { return 0 }
+
+      let answer = src[idx]
+      idx += 1
+      return answer
    }
 
    // Peek ahead a byte.
-   func peek(next val: UInt8) -> Bool {
-      return (idx < count) && (src[idx] == val)
-   }
+   func peek(next val: UInt8) -> Bool { (idx < count) && (src[idx] == val) }
 
    // Peek ahead two bytes.
    func peek(next val1: UInt8, and val2: UInt8) -> Bool {
-      return (idx+1 < count) && 
-             (src[idx] ==  val1) &&
-	     (src[idx+1] == val2)
+      (idx+1 < count) && (src[idx] ==  val1) && (src[idx+1] == val2)
    }
 
    // Read a little-endian i16 from a byte iterator.
@@ -140,10 +135,10 @@ struct DataReader {
    }
 
    mutating func read_f32() -> Float {
-     let a = UInt64(read_u8())
-     let b = UInt64(read_u8())
-     let c = UInt64(read_u8())
-     let d = Int(read_u8())
+     let a = UInt64(read_u8()),
+         b = UInt64(read_u8()),
+         c = UInt64(read_u8()),
+         d = Int(read_u8())
      if d == 0 { return 0.0 }
      let sign : FloatingPointSign = (c & 0x80) == 0 ? .plus : .minus
      let exp = d - 129
@@ -153,14 +148,14 @@ struct DataReader {
    }
 
    mutating func read_f64() -> Double {
-     let a = UInt64(read_u8())
-     let b = UInt64(read_u8())
-     let c = UInt64(read_u8())
-     let d = UInt64(read_u8())
-     let e = UInt64(read_u8())
-     let f = UInt64(read_u8())
-     let g = UInt64(read_u8())
-     let h = Int(read_u8())
+     let a = UInt64(read_u8()),
+         b = UInt64(read_u8()),
+         c = UInt64(read_u8()),
+         d = UInt64(read_u8()),
+         e = UInt64(read_u8()),
+         f = UInt64(read_u8()),
+         g = UInt64(read_u8()),
+         h = Int(read_u8())
      if h == 0 { return 0.0 }
      let sign : FloatingPointSign = (g & 0x80) == 0 ? .plus : .minus
      let exp = h - 129
@@ -178,33 +173,31 @@ func parse_opcode(from dr: inout DataReader,
   let num = UInt16(dr.read_u8())
   let opcode = num >= 0xfd ? (num << 8)|UInt16(dr.read_u8()) : num
 
-  if opcode == 0x3A && dr.peek(next: 0xA1) {
+  switch opcode {
+  case 0x3A where dr.peek(next: 0xA1): 
      buf.append("ELSE")
      dr.skip(1)
-  } else if opcode == 0x3A && dr.peek(next: 0x8F, and: 0xD9) {
+  case 0x3A where dr.peek(next: 0x8F, and: 0xD9):
      buf.append("'")
      dr.skip(2)
-  } else if opcode == 0xB1 && dr.peek(next: 0xE9) {
+  case 0xB1 where dr.peek(next: 0xE9): 
      buf.append("WHILE")
      dr.skip(1)
-  } else {
-     switch opcode {
-     case 0x00: break // do nothing
-     case 0x0B: buf.append(String(format: "&O%o", dr.read_i16()))
-     case 0x0C: buf.append(String(format: "&H%X", dr.read_i16()))
-     case 0x0E: print(dr.read_u16(), terminator: "", to: &buf)
-     case 0x0F: print(dr.read_u8(), terminator: "", to: &buf)
-     case 0x11...0x1B: buf.append(TOKENS[Int(opcode - 0x11)])
-     case 0x1C: print(dr.read_i16(), terminator: "", to: &buf)
-     case 0x1D: print(dr.read_f32(), terminator: "", to: &buf)
-     case 0x1F: print(dr.read_f64(), terminator: "", to: &buf)
-     case 0x20...0x7E: buf.append(Character(UnicodeScalar(opcode)!)) 
-     case 0x81...0xF4: buf.append(TOKENS[Int(num - 118)])
-     case 0xFD81...0xFD8B: buf.append(TOKENS[Int(opcode - 64770)])
-     case 0xFE81...0xFEA8: buf.append(TOKENS[Int(opcode - 65015)])
-     case 0xFF81...0xFFA5: buf.append(TOKENS[Int(opcode - 65231)])
-     default: buf.append(String(format: "<UNK! %04X>", opcode))
-     }
+  case 0x00            : break // do nothing
+  case 0x0A            : buf.append(String(format: "&O%o", dr.read_i16()))
+  case 0x0C            : buf.append(String(format: "&H%X", dr.read_i16()))
+  case 0x0E            : print(dr.read_u16(), terminator: "", to: &buf)
+  case 0x0F            : print(dr.read_u8(), terminator: "", to: &buf)
+  case 0x11...0x1B     : buf.append(TOKENS[Int(opcode - 0x11)])
+  case 0x1C            : print(dr.read_i16(), terminator: "", to: &buf)
+  case 0x1D            : print(dr.read_f32(), terminator: "", to: &buf)
+  case 0x1F            : print(dr.read_f64(), terminator: "", to: &buf)
+  case 0x20...0x7E     : buf.append(Character(UnicodeScalar(opcode)!))
+  case 0x81...0xF4     : buf.append(TOKENS[Int(num - 118)])
+  case 0xFD81...0xFD8B : buf.append(TOKENS[Int(opcode - 64770)])
+  case 0xFE81...0xFEA8 : buf.append(TOKENS[Int(opcode - 65015)])
+  case 0xFF81...0xFFA5 : buf.append(TOKENS[Int(opcode - 65231)])
+  default              : buf.append(String(format: "<UNK! %04X>", opcode))
   }
   return (opcode != 0)
 }
@@ -221,25 +214,19 @@ func read_line(from dr: inout DataReader, to buf: inout String) {
 // ----------------------------------------------------------------------
 // M A I N  P R O G R A M
 // ----------------------------------------------------------------------
-if CommandLine.argc < 2 {
+guard CommandLine.argc >= 2 else {
    print("Need a file name!")
    exit(1)
 }
-
-if var dr = DataReader(fromFile: CommandLine.arguments[1]) {
-
-  var buffer = ""
-  while true {
-     read_line(from: &dr, to: &buffer)
-     if buffer.isEmpty { break }
-     print(buffer)
-     buffer.removeAll(keepingCapacity: true)
-  }
-
-} else {
-
+guard var dr = DataReader(fromFile: CommandLine.arguments[1]) else {
    print("Could not load file! ", CommandLine.arguments[1])
    exit(1)
-
 }
 
+var buffer = ""
+while true {
+   read_line(from: &dr, to: &buffer)
+   if buffer.isEmpty { break }
+   print(buffer)
+   buffer.removeAll(keepingCapacity: true)
+}
