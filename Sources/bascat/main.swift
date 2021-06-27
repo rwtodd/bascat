@@ -63,7 +63,7 @@ let TOKENS = [
 func decrypt_buffer(_ buf: inout [UInt8]) {
   let KEY11: [UInt8]  = [0x1E,0x1D,0xC4,0x77,0x26,0x97,0xE0,0x74,0x59,0x88,0x7C]
   let KEY13: [UInt8]  = [0xA9,0x84,0x8D,0xCD,0x75,0x83,0x43,0x63,0x24,0x83,0x19,0xF7,0x9A]
-  buf[0] = 0xfe  // decrypted!
+  buf[0] = 0xff  // decrypted!
   for i in 1..<buf.count {
     let idx11 : UInt8 = UInt8((i - 1) % 11)
     let idx13 : UInt8 = UInt8((i - 1) % 13)
@@ -89,10 +89,10 @@ struct DataReader {
 
         var buffer = [UInt8](repeating: 0, count: data.length)
         data.getBytes(&buffer, length: data.length)
-        if buffer[0] == 0xff {
+        if buffer[0] == 0xfe {
            decrypt_buffer(&buffer)
         }
-        if buffer[0] == 0xfe {
+        if buffer[0] == 0xff {
 	   src   = buffer
            count = src.count
         } else {
@@ -139,34 +139,107 @@ struct DataReader {
      return (b2 << 8) | b1 
    }
 
-   mutating func read_f32() -> Double {
-     idx += 4
-     return 0.0 
+   mutating func read_f32() -> Float {
+     let a = UInt64(read_u8())
+     let b = UInt64(read_u8())
+     let c = UInt64(read_u8())
+     let d = Int(read_u8())
+     if d == 0 { return 0.0 }
+     let sign : FloatingPointSign = (c & 0x80) == 0 ? .plus : .minus
+     let exp = d - 129
+     let scand = Double( ((c|0x80) << 16) | (b << 8) | a ) /
+                 Double(0x80_0000)
+     return Float(Double(sign: sign, exponent: exp, significand: scand))
    }
 
    mutating func read_f64() -> Double {
-     idx += 8
-     return 0.0 
+     let a = UInt64(read_u8())
+     let b = UInt64(read_u8())
+     let c = UInt64(read_u8())
+     let d = UInt64(read_u8())
+     let e = UInt64(read_u8())
+     let f = UInt64(read_u8())
+     let g = UInt64(read_u8())
+     let h = Int(read_u8())
+     if h == 0 { return 0.0 }
+     let sign : FloatingPointSign = (g & 0x80) == 0 ? .plus : .minus
+     let exp = h - 129
+     let scand_int = ((g|0x80) << 48) | (f << 40) | (e << 32) |
+                     (d << 24) | (c << 16) | (b << 8) | a
+     let scand = Double( scand_int ) / Double( 0x80_0000_0000_0000 )
+     return Double(sign: sign, exponent: exp, significand: scand)
    }
 
+   mutating func skip(_ n: Int) { idx += n }
 }
 
-// test code
-print("There are \(TOKENS.count) tokens!")
-print("Memory of DataReader: ", MemoryLayout<DataReader>.size)
+func parse_opcode(from dr: inout DataReader,
+                  to buf: inout String) -> Bool {
+  let num = UInt16(dr.read_u8())
+  let opcode = num >= 0xfd ? (num << 8)|UInt16(dr.read_u8()) : num
 
+  if opcode == 0x3A && dr.peek(next: 0xA1) {
+     buf.append("ELSE")
+     dr.skip(1)
+  } else if opcode == 0x3A && dr.peek(next: 0x8F, and: 0xD9) {
+     buf.append("'")
+     dr.skip(2)
+  } else if opcode == 0xB1 && dr.peek(next: 0xE9) {
+     buf.append("WHILE")
+     dr.skip(1)
+  } else {
+     switch opcode {
+     case 0x00: break // do nothing
+     case 0x0B: buf.append(String(format: "&O%o", dr.read_i16()))
+     case 0x0C: buf.append(String(format: "&H%X", dr.read_i16()))
+     case 0x0E: print(dr.read_u16(), terminator: "", to: &buf)
+     case 0x0F: print(dr.read_u8(), terminator: "", to: &buf)
+     case 0x11...0x1B: buf.append(TOKENS[Int(opcode - 0x11)])
+     case 0x1C: print(dr.read_i16(), terminator: "", to: &buf)
+     case 0x1D: print(dr.read_f32(), terminator: "", to: &buf)
+     case 0x1F: print(dr.read_f64(), terminator: "", to: &buf)
+     case 0x20...0x7E: buf.append(Character(UnicodeScalar(opcode)!)) 
+     case 0x81...0xF4: buf.append(TOKENS[Int(num - 118)])
+     case 0xFD81...0xFD8B: buf.append(TOKENS[Int(opcode - 64770)])
+     case 0xFE81...0xFEA8: buf.append(TOKENS[Int(opcode - 65015)])
+     case 0xFF81...0xFFA5: buf.append(TOKENS[Int(opcode - 65231)])
+     default: buf.append(String(format: "<UNK! %04X>", opcode))
+     }
+  }
+  return (opcode != 0)
+}
+
+func read_line(from dr: inout DataReader, to buf: inout String) {
+  if dr.read_u16() != 0 {
+     print(dr.read_u16(), terminator: "  ", to: &buf)
+     while parse_opcode(from: &dr, to: &buf) {
+        // nothing!
+     }
+  }
+}
+
+// ----------------------------------------------------------------------
+// M A I N  P R O G R A M
+// ----------------------------------------------------------------------
 if CommandLine.argc < 2 {
    print("Need a file name!")
    exit(1)
 }
 
 if var dr = DataReader(fromFile: CommandLine.arguments[1]) {
-   print("Peek for 95? \(dr.peek(next: 95))")
-   print("Peek for 229? \(dr.peek(next: 229))")
-   print("Peek for 101 and 102? \(dr.peek(next: 101, and: 102))")
-   print("Got some data...\(dr.read_u8())!")
+
+  var buffer = ""
+  while true {
+     read_line(from: &dr, to: &buffer)
+     if buffer.isEmpty { break }
+     print(buffer)
+     buffer.removeAll(keepingCapacity: true)
+  }
+
 } else {
+
    print("Could not load file! ", CommandLine.arguments[1])
    exit(1)
+
 }
 
