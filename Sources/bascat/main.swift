@@ -97,7 +97,7 @@ struct DataReader {
    }
 
    mutating func read_u8() -> UInt8 {
-      guard idx < src.count else { return 0 }
+      guard idx < src.count, idx >= 0 else { return 0 }
 
       let answer = src[idx]
       idx += 1
@@ -105,11 +105,11 @@ struct DataReader {
    }
 
    // Peek ahead a byte.
-   func peek(next val: UInt8) -> Bool { (idx < src.count) && (src[idx] == val) }
+   func peek(next val: UInt8) -> Bool { (idx < src.count) && (idx >= 0) && (src[idx] == val) }
 
    // Peek ahead two bytes.
    func peek(next val1: UInt8, and val2: UInt8) -> Bool {
-      (idx+1 < src.count) && (src[idx] ==  val1) && (src[idx+1] == val2)
+      (idx+1 < src.count) && (idx >= 0) && (src[idx] ==  val1) && (src[idx+1] == val2)
    }
 
    // Read a little-endian i16 from a byte iterator.
