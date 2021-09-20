@@ -12,7 +12,7 @@
 RootModule = '.\RWTodd.GWBasic.dll'
 
 # Version number of this module.
-ModuleVersion = '1.0.1'
+ModuleVersion = '1.0.2'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -33,7 +33,7 @@ Copyright = '(c) Richard Todd. All rights reserved.'
 Description = 'Module for converting old tokenized GWBASIC/BASICA files.'
 
 # Minimum version of the PowerShell engine required by this module
-# PowerShellVersion = ''
+PowerShellVersion = '7.0'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''
@@ -95,19 +95,19 @@ PrivateData = @{
     PSData = @{
 
         # Tags applied to this module. These help with module discovery in online galleries.
-        # Tags = @()
+        Tags = @("GWBasic")
 
         # A URL to the license for this module.
-        # LicenseUri = ''
+        LicenseUri = 'https://github.com/rwtodd/bascat/blob/powershell-version/LICENSE.txt'
 
         # A URL to the main website for this project.
-        # ProjectUri = ''
+        ProjectUri = 'https://github.com/rwtodd/bascat'
 
         # A URL to an icon representing this module.
         # IconUri = ''
 
         # ReleaseNotes of this module
-        # ReleaseNotes = ''
+        ReleaseNotes = 'v1.0.2 update to netstandard2.1 to enable Span<T> and stackalloc'
 
         # Prerelease string of this module
         # Prerelease = ''

@@ -1,4 +1,6 @@
-﻿namespace RWTodd.GWBasic
+﻿using System;
+
+namespace RWTodd.GWBasic
 {
     internal sealed class Unprotector
     {
@@ -7,7 +9,7 @@
         private static readonly byte[] Key13 = 
             { 0xA9, 0x84, 0x8D, 0xCD, 0x75, 0x83, 0x43, 0x63, 0x24, 0x83, 0x19, 0xF7, 0x9A };
 
-        internal static byte[] Decode(byte[] buffer)
+        internal static void Decode(Span<byte> buffer)
         {
             int idx11 = 0;
             int idx13 = 0;
@@ -22,7 +24,6 @@
                 ans += (13 - idx13);
                 buffer[idx] = (byte)ans;
             }
-            return buffer;
         }
     }
 }

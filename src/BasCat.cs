@@ -17,7 +17,7 @@ namespace RWTodd.GWBasic
                 case 0xff:
                     break;
                 case 0xfe:
-                    Unprotector.Decode(buf);
+                    Unprotector.Decode(buf.AsSpan());
                     break;
                 default:
                     throw new FormatException("Not a recognizeable GW-BASIC file!");

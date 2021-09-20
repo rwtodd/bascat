@@ -7,14 +7,12 @@ namespace RWTodd.GWBasic
         private int idx;
         private readonly byte[] buf;
         private readonly int last2;
-        private byte[] mbf;  // scratch space for use in floating-pt conversion
 
         internal BinReader(byte[] buffer)
         {
             buf = buffer;
             idx = 0;
             last2 = buf.Length - 1;
-            mbf = new byte[8];
         }
 
         internal bool EOF => idx >= buf.Length;
@@ -34,6 +32,7 @@ namespace RWTodd.GWBasic
 
         internal Single ReadMBF32()
         {
+            Span<byte> mbf = stackalloc byte[4];
             mbf[0] = ReadByte();
             mbf[1] = ReadByte();
             mbf[2] = ReadByte();
@@ -44,13 +43,14 @@ namespace RWTodd.GWBasic
             byte exp = (byte)(mbf[3] - 2);
             mbf[3] = (byte)(sign | ((exp >> 1) & 0xff));
             mbf[2] = (byte)((exp << 7) | (mbf[2] & 0x7F));
-
-            if (!System.BitConverter.IsLittleEndian) System.Array.Reverse(mbf, 0, 4);
-            return System.BitConverter.ToSingle(mbf, 0);
+ 
+            if (!System.BitConverter.IsLittleEndian) mbf.Reverse();
+            return System.BitConverter.ToSingle(mbf);
         }
 
         internal Double ReadMBF64()
         {
+            Span<byte> mbf = stackalloc byte[8];
             for (int idx = 0; idx < 8; ++idx)
             {
                 mbf[idx] = ReadByte();
@@ -72,8 +72,8 @@ namespace RWTodd.GWBasic
             mbf[7] = (byte)(sign | ((exp >> 4) & 0x7f));
             mbf[6] = (byte)((mbf[6] & 0x0F) | ((exp & 0x0f) << 4));
 
-            if (!System.BitConverter.IsLittleEndian) System.Array.Reverse(mbf);
-            return System.BitConverter.ToDouble(mbf, 0);
+            if (!System.BitConverter.IsLittleEndian) mbf.Reverse();
+            return System.BitConverter.ToDouble(mbf);
         }
     }
 }
