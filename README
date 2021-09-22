@@ -1,4 +1,4 @@
-			     ==[ bascat v1.1 ]==
+			     ==[ bascat v1.2 ]==
 
 A c (unix) program to decode GW-BASIC/BASICA tokenized files.
 
@@ -18,14 +18,15 @@ bascat is a program to print out tokenized gwbasic .BAS files in ASCII.
 
 This version of bascat uses the UNIX `dc` program to convert the floats in a
 way that doesn't depend on the machine's endianness or floating-point
-representation.  The autoconf script searches for it, but you can override
+representation.  The configure script searches for it, but you can override
 the location if it can't be found automatically for some reason.
 
-It's an autotools project.  Just:
+It's not an autotools project, but the configure script should not
+surprise you.  You can still set the --prefix and what-not.  Plus, it's simple
+enough that you can easily modify it if you have a strange system.  But for
+defaults, just:
 
     configure && make && sudo make install
-
-or whatever you like to do.
 
 
 			     ==[ Formatting ]==

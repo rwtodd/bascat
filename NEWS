@@ -1,6 +1,11 @@
 N E W S
 -------
 
+2021-09-19:
+
+  Changed away from autotools... now just plain bash 'configure' script
+  generating a GNU makefile.
+
 2019-12-28:
 
   Changed the unix version of bascat so that it reaches out to the system

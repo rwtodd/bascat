@@ -211,8 +211,7 @@ read_u16 (gwbas_data * const b)
   return (b2 << 8) | b1;
 }
 
-/* Read a MS MBF-style 32-bit float, and convert it to a modern IEEE float.
- * NB: This function assumes little endian outputs are appropriate. */
+/* Read a MS MBF-style 32-bit float, and convert it to a native float via 'dc'. */
 static float
 read_f32 (gwbas_data * const b)
 {
@@ -236,12 +235,10 @@ read_f32 (gwbas_data * const b)
            posneg, numerator, denominator);
   fflush (dc_out);
   float result;
-  fscanf (dc_in, "%f", &result);
-  return result;
+  return (fscanf (dc_in, "%f", &result) == 1) ? result : 0.0f;
 }
 
-/* Read a MS MBF-style 64-bit float, and convert it to a modern IEEE double.
- * NB: This function assumes little endian outputs are appropriate. */
+/* Read a MS MBF-style 64-bit float, and convert it to a native double via the `dc` unix program. */
 static double
 read_f64 (gwbas_data * const b)
 {
@@ -267,8 +264,7 @@ read_f64 (gwbas_data * const b)
            posneg, numerator, denominator);
   fflush (dc_out);
   double result;
-  fscanf (dc_in, "%lf", &result);
-  return result;
+  return (fscanf (dc_in, "%lf", &result) == 1) ? result : 0.0;
 }
 
 /* Read the first byte of FNAME, and decrypt the file
@@ -395,7 +391,7 @@ main (int argc, char **argv)
   if (argc != 2)
     {
       fprintf (stderr,
-               "This is " PACKAGE_NAME ", version " PACKAGE_VERSION
+               "This is bascat, version " PACKAGE_VERSION
                ".\n\nUsage: %s <gwbas_data file>\n", argv[0]);
       return 1;
     }

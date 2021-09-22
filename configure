@@ -1,0 +1,147 @@
+#!/bin/bash
+
+# update package version for every release!
+PACKVER="1.2"
+
+echo "Configuring bascat $PACKVER. Run with --help to see options."
+echo ""
+
+print_usage() {
+    cat <<EOF >&2
+Usage:
+  configure <options>
+
+Options:
+  --help     print this help message
+
+  --prefix   set the installation prefix
+             (default /usr/local)
+
+  --cc       set the c compiler to use (also pulls from $CC env var)
+             (default cc)
+
+  --cflags   set c flags (also pulls from \$CFLAGS env var)
+             (default -O2 -g)
+
+  --ldflags  set linker flags (also pulls from \$LDFLAGS env var)
+             (default is empty)
+
+  --dc-path  set the full path to your 'dc' program, if it's not in
+             your path.
+EOF
+}
+
+# set options ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+prefix='/usr/local'
+if [ -z $CFLAGS ] ; then CFLAGS='-O2 -g' ; fi
+if [ -z $LDFLAGS ] ; then LDFLAGS='' ; fi
+if [ -z $CC ] ; then CC='cc' ; fi
+DC_PATH=$(builtin type -P dc)
+
+while [ ! -z "$1" ]
+do
+    case "$1" in
+        --help)
+            print_usage
+            exit 1
+            ;;
+        --prefix=*)
+            prefix="${1#*=}"
+            ;;
+        --prefix)
+            shift; prefix="$1"
+            ;;
+        --cc=*)
+            CC="${1#*=}"
+            ;;
+        --cc)
+            shift; CC="$1"
+            ;;
+        --cflags=*)
+            CFLAGS="${1#*=}"
+            ;;
+        --cflags)
+            shift; CFLAGS="$1"
+            ;;
+        --ldflags=*)
+            LDFLAGS="${1#*=}"
+            ;;
+        --ldflags)
+            shift; LDFLAGS="$1"
+            ;;
+        --dc-path=*)
+            DC_PATH="${1#*=}"
+            ;;
+        --dc-path)
+            shift; DC_PATH="$1"
+            ;;
+        *)
+            echo "Unknown argument <$1>!" >&2
+            exit 1
+            ;;
+    esac
+    shift
+done
+
+# sanity checks... ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+echo "Sanity checks:"
+BASEDIR=$(dirname "$0")
+
+if [[ "$BASEDIR" =~ ' ' ]] ; then
+    echo "  Base directory \"$BASEDIR\" contains spaces, which will confuse 'make'!" >&2
+    exit 1
+fi
+
+if [ -f "${BASEDIR}/Makefile.inc" ]
+then
+    echo "  'configure' appears to be in the source directory. Good."
+else
+    echo "  'configure' doesn't seem to be in the same directory as the source!" >&2
+    exit 1
+fi
+
+for program in 'sed' 'cp' 'mkdir'; do
+    if builtin type -P $program &> /dev/null 
+    then
+        echo "  Found $program command.  Good."
+    else
+        echo "  $program program isn't in your path! Very unusual. This build will fail." >&2
+        exit 1
+    fi
+done
+
+DC_PATH=${DC_PATH:-dc}
+if [ -x "$DC_PATH" ]
+then
+    echo "  Found $DC_PATH. Good."
+else
+    echo "  The 'dc' program wasn't found.  You may need to install it (probably with your system package manager)." >&2
+    exit 1
+fi
+
+# output phase ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+cat <<EOF
+
+Configuration:
+  Source dir: $BASEDIR
+  Build dir: $(pwd)
+  Compiler: $CC
+  C flags: $CFLAGS
+  Linker flags: $LDFLAGS
+  Path to 'dc': $DC_PATH
+  Installation prefix: $prefix
+EOF
+
+cat <<EOF > GNUmakefile
+VERSION=$PACKVER
+BASE=$BASEDIR
+PREFIX=$prefix
+DC_PATH=$DC_PATH
+VPATH=\$(BASE)
+CC=$CC
+CFLAGS=$CFLAGS -I. -I\$(BASE)
+LDFLAGS=$LDFLAGS
+include \$(BASE)/Makefile.inc
+EOF
+
+# vim: sw=4:et:
