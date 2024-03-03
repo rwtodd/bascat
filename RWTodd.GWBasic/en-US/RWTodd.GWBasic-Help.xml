@@ -17,10 +17,10 @@
       <command:syntaxItem>
         <maml:name>ConvertFrom-GWBasic</maml:name>
         <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="True (ByPropertyName, ByValue)" position="0" aliases="none">
-          <maml:name>BasFile</maml:name>
-          <maml:Description>
-            <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.  It is a literal path (no wildcards).  If you need wildcards, pipe items into the cmdlet instead.</maml:para>
-          </maml:Description>
+          <maml:name>Path</maml:name>
+          <maml:description>
+            <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.  Wildcards are allowed.</maml:para>
+          </maml:description>
           <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
           <dev:type>
             <maml:name>String</maml:name>
@@ -32,10 +32,10 @@
     </command:syntax>
     <command:parameters>
       <command:parameter required="true" variableLength="true" globbing="false" pipelineInput="True (ByPropertyName, ByValue)" position="0" aliases="none">
-        <maml:name>BasFile</maml:name>
-        <maml:Description>
-          <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.  It is a literal path (no wildcards).  If you need wildcards, pipe items into the cmdlet instead.</maml:para>
-        </maml:Description>
+        <maml:name>Path</maml:name>
+        <maml:description>
+          <maml:para>The GWBASIC/BASICA tokenized file to convert to plain text.  Wildcards are allowed.</maml:para>
+        </maml:description>
         <command:parameterValue required="true" variableLength="false">String</command:parameterValue>
         <dev:type>
           <maml:name>String</maml:name>

@@ -9,10 +9,10 @@
 @{
 
 # Script module or binary module file associated with this manifest.
-RootModule = '.\RWTodd.GWBasic.dll'
+RootModule = '.\RWTodd.GWBasic.psm1'
 
 # Version number of this module.
-ModuleVersion = '1.0.2'
+ModuleVersion = '2.0.0'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -33,7 +33,7 @@ Copyright = '(c) Richard Todd. All rights reserved.'
 Description = 'Module for converting old tokenized GWBASIC/BASICA files.'
 
 # Minimum version of the PowerShell engine required by this module
-PowerShellVersion = '7.0'
+PowerShellVersion = '7.2'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''
@@ -54,7 +54,7 @@ PowerShellVersion = '7.0'
 # RequiredModules = @()
 
 # Assemblies that must be loaded prior to importing this module
-# RequiredAssemblies = @()
+RequiredAssemblies = @('RWTodd.GWBasic.dll')
 
 # Script files (.ps1) that are run in the caller's environment prior to importing this module.
 # ScriptsToProcess = @()
@@ -69,10 +69,10 @@ PowerShellVersion = '7.0'
 # NestedModules = @()
 
 # Functions to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no functions to export.
-FunctionsToExport = @()
+FunctionsToExport = @('ConvertFrom-GWBasic')
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @("ConvertFrom-GWBasic")
+CmdletsToExport = @()
 
 # Variables to export from this module
 VariablesToExport = @()
@@ -107,7 +107,7 @@ PrivateData = @{
         # IconUri = ''
 
         # ReleaseNotes of this module
-        ReleaseNotes = 'v1.0.2 update to netstandard2.1 to enable Span<T> and stackalloc'
+        ReleaseNotes = 'v2 update to net6.0 and wrap the c# dll rather than define c# cmdlet'
 
         # Prerelease string of this module
         # Prerelease = ''

@@ -1,5 +1,5 @@
 ---
-external help file: RWTodd.GWBasic.dll-Help.xml
+external help file: RWTodd.GWBasic-Help.xml
 Module Name: RWTodd.GWBasic
 online version:
 schema: 2.0.0
@@ -13,7 +13,7 @@ Convert a GWBASIC or BASICA tokenized basic file to plain text.
 ## SYNTAX
 
 ```
-ConvertFrom-GWBasic [-BasFile] <String> [<CommonParameters>]
+ConvertFrom-GWBasic [-Path] <String> [<CommonParameters>]
 ```
 
 ## DESCRIPTION
@@ -39,8 +39,8 @@ Converts all the .gwbas files in the directory to plain text and outputs to the 
 
 ## PARAMETERS
 
-### -BasFile
-The GWBASIC/BASICA tokenized file to convert to plain text.  It is a literal path (no wildcards).  If you need wildcards, pipe items into the cmdlet instead.
+### -Path
+The GWBASIC/BASICA tokenized file to convert to plain text.  Wildcards are allowed.
 
 ```yaml
 Type: String

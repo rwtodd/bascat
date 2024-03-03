@@ -1,7 +1,8 @@
 # RWTodd.GWBasic PS Module
 
 This is a PowerShell Module for converting old tokenized .BAS files to plain text.  It provides a
-single cmdlet, `ConvertFrom-GWBasic`, which does the work.
+single cmdlet, `ConvertFrom-GWBasic`, which does the work.  A C# library does the heavy lifting, and
+the psm1 module wraps it in a nice interface.
 
 In other branches of this repository I have console programs to do the same thing in
 many languages.  If you prefer, get one of those running.

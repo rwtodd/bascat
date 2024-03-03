@@ -1,14 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace RWTodd.GWBasic
 {
-    internal sealed class BasCat
+    public sealed class BasCat
     {
         private readonly BinReader rdr;
 
-        internal BasCat(byte[] buf)
+        public BasCat(byte[] buf)
         {
             rdr = new BinReader(buf);
 
@@ -23,6 +24,8 @@ namespace RWTodd.GWBasic
                     throw new FormatException("Not a recognizeable GW-BASIC file!");
             }
         }
+
+        public BasCat(string filename) : this(File.ReadAllBytes(filename)) {}
 
         private bool PrintToken(System.IO.TextWriter tw)
         {
@@ -65,7 +68,7 @@ namespace RWTodd.GWBasic
             return hasMore;
         }
 
-        internal IEnumerable<string> GetAllLines() 
+        public IEnumerable<string> GetAllLines() 
         {
             var sb = new StringBuilder(120);
             var sw = new System.IO.StringWriter(sb);
