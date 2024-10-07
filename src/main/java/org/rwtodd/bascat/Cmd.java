@@ -13,8 +13,8 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 /**
- *
- * @author richa
+ * The main driver for the bascat program.
+ * @author Richard Todd
  */
 public class Cmd {
 
@@ -52,38 +52,27 @@ public class Cmd {
             sb.append(TOKENS[nxt - 65015]);
         } else if (nxt >= 0xFF81 && nxt <= 0xFFA5) {
             sb.append(TOKENS[nxt - 65231]);
-        } // a few special cases, mostly for number fomatting
+        } // a few special cases, mostly for number formatting
         else {
             switch (nxt) {
-
-                case 0:
+                case 0 ->
                     hasMore = false;
-                    break;
-                case 0x0B:  // OCTAL
+                case 0x0B -> // OCTAL
                     sb.append(String.format("&O%o", in.getShort()));
-                    break;
-                case 0x0C:  // HEX
+                case 0x0C ->  // HEX
                     sb.append(String.format("&H%X", in.getShort()));
-                    break;
-                case 0x0E:  // DECIMAL UNSIGNED SHORT
+                case 0x0E ->  // DECIMAL UNSIGNED SHORT
                     sb.append(in.getShort() & 0xffff);
-                    break;
-                case 0x0F:  // DECIMAL UNSIGNED BYTE
+                case 0x0F ->  // DECIMAL UNSIGNED BYTE
                     sb.append(in.get() & 0xff);
-                    break;
-                case 0x1C: // DECIMAL SIGNED SHORT
+                case 0x1C -> // DECIMAL SIGNED SHORT
                     sb.append(in.getShort());
-                    break;
-                case 0x1D:  // FLOAT 32
+                case 0x1D ->  // FLOAT 32
                     sb.append(String.format("%g", MBFReader.getMBF32(in)));
-                    break;
-                case 0x1F: // FLOAT 64
+                case 0x1F -> // FLOAT 64
                     sb.append(String.format("%g", MBFReader.getMBF64(in)));
-                    break;
-
-                default:
+                default ->
                     sb.append(String.format("<UNK! %x>", nxt));
-                    break;
             }
         }
 
@@ -110,8 +99,7 @@ public class Cmd {
                 break; // 0 pointer == EOF
             }
             sb.append(in.getShort() & 0xffff).append("  ");
-            while (nextToken(in, sb)) {
-                /* do nothing */ }
+            while (nextToken(in, sb)) { /* do nothing */ }
             ps.println(sb.toString());
             sb.setLength(0);
         }
@@ -129,7 +117,7 @@ public class Cmd {
         try {
             cat(Files.readAllBytes(Paths.get(args[0])), System.out);
         } catch (IOException | BufferUnderflowException | IllegalArgumentException e) {
-            System.err.println(e);
+            System.err.println(e.getMessage());
         }
     }
 

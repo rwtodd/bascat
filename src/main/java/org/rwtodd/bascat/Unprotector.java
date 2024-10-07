@@ -21,7 +21,7 @@ final class Unprotector {
     private final static int[] KEY11 = {0x1E, 0x1D, 0xC4, 0x77, 0x26,
         0x97, 0xE0, 0x74, 0x59, 0x88, 0x7C};
 
-    public static byte[] unprotect(byte[] src) {
+    public static void unprotect(byte[] src) {
         int idx13 = 0;
         int idx11 = 0;
         int ans;
@@ -44,6 +44,5 @@ final class Unprotector {
                 idx13 = 0;
             }
         }
-        return src;
     }
 }
