@@ -12,9 +12,7 @@ It was possible to save your file encrypted in GW-BASIC, and I found the
 decryption
 algorithm in the [PC-BASIC](http://sourceforge.net/p/pcbasic/wiki/Home/)
 project. So,
-I implemented that decryption scheme... however I do not have any
-encrypted BAS files
-to test it on, so I don't know if it works.
+I implemented that decryption scheme...  and in some basic tests running GW-BASIC 3.23 in DOSBOX it does work.
 
 ## Referece
 
