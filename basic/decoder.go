@@ -1,15 +1,13 @@
-package main
+package basic
 
 import (
-	"bytes"
-	"fmt"
-	"io/ioutil"
-	"os"
+	"iter"
 	"strconv"
+	"strings"
 )
 
 // nextToken decodes the next token from the input.
-func nextToken(b *buffer, sb *bytes.Buffer) (hasMore bool) {
+func nextToken(b *buffer, sb *strings.Builder) (hasMore bool) {
 	tok := int(b.readU8())
 	if tok >= 0xfd {
 		tok = (tok << 8) | int(b.readU8())
@@ -30,7 +28,6 @@ func nextToken(b *buffer, sb *bytes.Buffer) (hasMore bool) {
 
 		// it might be the end of line
 	case tok == 0:
-		sb.WriteByte(byte('\n'))
 		hasMore = false
 
 		// it could be a formatted number
@@ -75,52 +72,29 @@ func nextToken(b *buffer, sb *bytes.Buffer) (hasMore bool) {
 	return
 }
 
-// cat is the high-level driver of the program (named after the
-// UNIX tool.  It pulls in a line of tokens at a time, and sends
-// them to be output.
-func cat(b *buffer) {
-	var sb bytes.Buffer
-	for !b.eof() {
-		if b.readUInt16() == 0 {
-			break
-		}
-		sb.WriteString(strconv.Itoa(int(b.readUInt16())))
-		sb.WriteString("  ")
-		for nextToken(b, &sb) { /* empty */
-		}
-		os.Stdout.Write(sb.Bytes())
-		sb.Reset()
-	}
-}
-
-func main() {
-
-	var bytes []byte
-	var err error
-
-	switch len(os.Args) {
-	case 1:
-		bytes, err = ioutil.ReadAll(os.Stdin)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Can't read stdin!: %s\n", err.Error())
-			os.Exit(1)
-		}
-	case 2:
-		bytes, err = ioutil.ReadFile(os.Args[1])
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Can't read <%s>!: %s\n", os.Args[1], err.Error())
-			os.Exit(1)
-		}
-	default:
-		fmt.Fprintf(os.Stderr, "Usage: bascat [file]\n")
-		os.Exit(2)
-	}
-
-	buff, err := newBuffer(bytes)
+// DecodeLines returns an iterator over the line numbers (uint16)
+// and lines (string) of the BASIC program given in the `bs` byte array.
+// If the byte array does not look right, it returns an error instead.
+func DecodeLines(bs []byte) (iter.Seq2[uint16,string], error) {
+	b, err := newBuffer(bs)
 	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
+		return nil, err
 	}
 
-	cat(buff)
+	return func(yield func(uint16, string) bool) {
+		var sb strings.Builder
+		for !b.eof() {
+			if b.readUInt16() == 0 {
+				break
+			}
+
+			lineno := b.readUInt16()
+			for nextToken(b, &sb) { /* empty */
+			}
+			if !yield(lineno, sb.String()) {
+				return
+			}
+			sb.Reset()
+		}
+	}, nil
 }

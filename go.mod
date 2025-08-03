@@ -1,3 +1,3 @@
 module github.com/rwtodd/bascat
 
-go 1.13
+go 1.24.5

@@ -1,4 +1,4 @@
-package main
+package basic
 
 // a decrypter for protected BAS files.
 // I found the algorithm in a python program ("PC-BASIC"),
