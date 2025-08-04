@@ -75,7 +75,7 @@ func nextToken(b *buffer, sb *strings.Builder) (hasMore bool) {
 // DecodeLines returns an iterator over the line numbers (uint16)
 // and lines (string) of the BASIC program given in the `bs` byte array.
 // If the byte array does not look right, it returns an error instead.
-func DecodeLines(bs []byte) (iter.Seq2[uint16,string], error) {
+func DecodeLines(bs []byte) (iter.Seq2[uint16, string], error) {
 	b, err := newBuffer(bs)
 	if err != nil {
 		return nil, err
