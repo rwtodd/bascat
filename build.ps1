@@ -14,3 +14,6 @@ Measure-PlatyPSMarkdown -Path ./docs-en-US/RWTodd.GWBasic/*.md |
 mkdir ./RWTodd.GWBasic/en-US
 copy ./maml/RWTodd.GWBasic/*.xml ./RWTodd.GWBasic/en-US/
 
+
+# to create a nupkg... use:
+# Compress-PSResource -Path ./RWTodd.GWBasic -DestinationPath .
