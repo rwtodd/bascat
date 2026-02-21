@@ -3,89 +3,89 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace RWTodd.GWBasic
+namespace RWTodd.GWBasic;
+
+public sealed class BasCat
 {
-    public sealed class BasCat
+    private readonly BinReader rdr;
+
+    public BasCat(byte[] buf)
     {
-        private readonly BinReader rdr;
+        rdr = new BinReader(buf);
 
-        public BasCat(byte[] buf)
+        switch (rdr.ReadByte())
         {
-            rdr = new BinReader(buf);
-
-            switch (rdr.ReadByte())
-            {
-                case 0xff:
-                    break;
-                case 0xfe:
-                    Unprotector.Decode(buf.AsSpan());
-                    break;
-                default:
-                    throw new FormatException("Not a recognizeable GW-BASIC file!");
-            }
+            case 0xff:
+                break;
+            case 0xfe:
+                Unprotector.Decode(buf.AsSpan());
+                break;
+            default:
+                throw new FormatException("Not a recognizeable GW-BASIC file!");
         }
+    }
 
-        public BasCat(string filename) : this(File.ReadAllBytes(filename)) {}
+    public BasCat(string filename) : this(File.ReadAllBytes(filename)) { }
 
-        private bool PrintToken(System.IO.TextWriter tw)
+    private bool PrintToken(System.IO.TextWriter tw)
+    {
+        Int32 b = rdr.ReadByte();
+        if (b >= 0xfd) b = (b << 8) | (rdr.ReadByte());
+
+        var hasMore = true;
+        switch (b)
         {
-            Int32 b = rdr.ReadByte();
-            if (b >= 0xfd) b = (b << 8) | (rdr.ReadByte());
-
-            var hasMore = true;
-            switch (b)
-            {
-                case 0x3A when rdr.Peek(0xA1):
-                    tw.Write("ELSE"); rdr.Skip(1); break;
-                case 0x3A when rdr.Peek(0x8F,0xD9):
-                    tw.Write('\''); rdr.Skip(2); break;
-                case 0xB1 when rdr.Peek(0xE9):
-                    tw.Write("WHILE"); rdr.Skip(1); break;
-                case 0x00: hasMore = false; break;
-                case 0x0B: tw.Write("&O{0}", Convert.ToString(rdr.ReadS16(), 8)); break;
-                case 0x0C: tw.Write("&H{0:x}", rdr.ReadS16()); break;
-                case 0x0E: tw.Write(rdr.ReadU16()); break;
-                case 0x0F: tw.Write(rdr.ReadByte()); break;
-                case var x when (x >= 0x20 && x <= 0x7E):
-                    tw.Write((char)x); break;
-                case var x when (x >= 0x11 && x <= 0x1B):
-                    tw.Write(Tokens[x - 0x11]); break;
-                case 0x1C: tw.Write(rdr.ReadS16()); break;
-                case 0x1D: tw.Write("{0:G}",rdr.ReadMBF32()); break;
-                case 0x1F: tw.Write("{0:G}",rdr.ReadMBF64()); break;
-                case var x when (x >= 0x81 && x <= 0xF4):
-                    tw.Write(Tokens[x - 118]); break;
-                case var x when (x >= 0xFD81 && x <= 0xFD8B):
-                    tw.Write(Tokens[x - 64770]); break;
-                case var x when (x >= 0xFE81 && x <= 0xFEA8):
-                    tw.Write(Tokens[x - 65015]); break;
-                case var x when (x >= 0xFF81 && x <= 0xFFA5):
-                    tw.Write(Tokens[x - 65231]); break;
-                default:
-                    tw.Write("<UNK {0}!>", b);
-                    break;
-            }
-            return hasMore;
+            case 0x3A when rdr.Peek(0xA1):
+                tw.Write("ELSE"); rdr.Skip(1); break;
+            case 0x3A when rdr.Peek(0x8F, 0xD9):
+                tw.Write('\''); rdr.Skip(2); break;
+            case 0xB1 when rdr.Peek(0xE9):
+                tw.Write("WHILE"); rdr.Skip(1); break;
+            case 0x00: hasMore = false; break;
+            case 0x0B: tw.Write("&O{0}", Convert.ToString(rdr.ReadS16(), 8)); break;
+            case 0x0C: tw.Write("&H{0:x}", rdr.ReadS16()); break;
+            case 0x0E: tw.Write(rdr.ReadU16()); break;
+            case 0x0F: tw.Write(rdr.ReadByte()); break;
+            case var x when (x >= 0x20 && x <= 0x7E):
+                tw.Write((char)x); break;
+            case var x when (x >= 0x11 && x <= 0x1B):
+                tw.Write(Tokens[x - 0x11]); break;
+            case 0x1C: tw.Write(rdr.ReadS16()); break;
+            case 0x1D: tw.Write("{0:G}", rdr.ReadMBF32()); break;
+            case 0x1F: tw.Write("{0:G}", rdr.ReadMBF64()); break;
+            case var x when (x >= 0x81 && x <= 0xF4):
+                tw.Write(Tokens[x - 118]); break;
+            case var x when (x >= 0xFD81 && x <= 0xFD8B):
+                tw.Write(Tokens[x - 64770]); break;
+            case var x when (x >= 0xFE81 && x <= 0xFEA8):
+                tw.Write(Tokens[x - 65015]); break;
+            case var x when (x >= 0xFF81 && x <= 0xFFA5):
+                tw.Write(Tokens[x - 65231]); break;
+            default:
+                tw.Write("<UNK {0}!>", b);
+                break;
         }
+        return hasMore;
+    }
 
-        public IEnumerable<string> GetAllLines() 
+    public IEnumerable<string> GetAllLines()
+    {
+        var sb = new StringBuilder(120);
+        var sw = new System.IO.StringWriter(sb);
+        while (!rdr.EOF)
         {
-            var sb = new StringBuilder(120);
-            var sw = new System.IO.StringWriter(sb);
-            while (!rdr.EOF)
-            {
-                if (rdr.ReadU16() == 0) break;  // 0 pointer == EOF
-                sw.Write(rdr.ReadU16());
-                sw.Write("  ");
-                while(PrintToken(sw)) {  /* nothing */ }
-                yield return sw.ToString();
-                sb.Clear();
-            }
-            yield break;
+            if (rdr.ReadU16() == 0) break;  // 0 pointer == EOF
+            sw.Write(rdr.ReadU16());
+            sw.Write("  ");
+            while (PrintToken(sw)) {  /* nothing */ }
+            yield return sw.ToString();
+            sb.Clear();
         }
+        yield break;
+    }
 
-        private static readonly String[] Tokens =
-        {
+    private static readonly String[] Tokens =
+    {
            /* 0x11 - 0x1B */
            "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
 
@@ -144,5 +144,4 @@ namespace RWTodd.GWBasic
            "STICK", "STRIG", "EOF", "LOC", "LOF"
         };
 
-    }
 }

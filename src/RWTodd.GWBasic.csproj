@@ -1,9 +1,23 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <PropertyGroup Condition="'$(BuildForPowerShell)' != 'true'">
+    <TargetFramework>net10.0</TargetFramework> <!-- net10 for standalone library -->
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(BuildForPowerShell)' == 'true'">
+    <TargetFramework>net9.0</TargetFramework> <!-- net9 for pwsh 7.5+ compatibility -->
+  </PropertyGroup>
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework> <!-- net6 for compatibility with pwsh 7.2 -->
     <AssemblyName>RWTodd.GWBasic</AssemblyName>
     <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
+
+  <ItemGroup Condition="'$(BuildForPowerShell)' != 'true'">
+    <Compile Remove="GetGWBasicContentCommand.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(BuildForPowerShell)' == 'true'">
+    <PackageReference Include="System.Management.Automation" Version="7.4.0" />
+  </ItemGroup>
 
 </Project>
