@@ -81,7 +81,6 @@ public sealed class BasCat
             yield return sw.ToString();
             sb.Clear();
         }
-        yield break;
     }
 
     private static readonly String[] Tokens =

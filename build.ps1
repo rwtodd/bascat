@@ -1,19 +1,18 @@
 # To make the help md files in the first place:
-#  New-MarkdownCommandHelp -ModuleInfo (Get-Module -Name RWTodd.GWBasic) -OutputFolder ./docs-en-US -WithModulePage 
+#  New-MarkdownCommandHelp -ModuleInfo (Get-Module -Name RWTodd.GWBasic.PowerShell) -OutputFolder ./docs-en-US -WithModulePage 
 
 
 # build script to put everything in the right place....
 
-dotnet build -c Release -p:BuildForPowerShell=true -o $PSScriptRoot/RWTodd.GWBasic $PSScriptRoot/src/RWTodd.GWBasic.csproj
+dotnet build -c Release -p:BuildForPowerShell=true -o $PSScriptRoot/RWTodd.GWBasic.PowerShell $PSScriptRoot/RWTodd.GWBasic/RWTodd.GWBasic.csproj
 
-Measure-PlatyPSMarkdown -Path ./docs-en-US/RWTodd.GWBasic/*.md |                   
-   Where-Object Filetype -match 'CommandHelp' |
-   Import-MarkdownCommandHelp -Path {$_.FilePath} |
-   Export-MamlCommandHelp -OutputFolder .\maml
+Measure-PlatyPSMarkdown -Path $PSScriptRoot/docs-en-US/RWTodd.GWBasic.PowerShell/*.md |
+Where-Object { $_.FileType -match 'CommandHelp' } |
+Import-MarkdownCommandHelp -Path { $_.FilePath } |
+Export-MamlCommandHelp -OutputFolder $PSScriptRoot/maml -Force
 
-mkdir ./RWTodd.GWBasic/en-US
-copy ./maml/RWTodd.GWBasic/*.xml ./RWTodd.GWBasic/en-US/
-
+if (!(Test-Path $PSScriptRoot/RWTodd.GWBasic.PowerShell/en-US)) { mkdir $PSScriptRoot/RWTodd.GWBasic.PowerShell/en-US }
+Copy-Item $PSScriptRoot/maml/RWTodd.GWBasic.PowerShell/*.xml $PSScriptRoot/RWTodd.GWBasic.PowerShell/en-US/
 
 # to create a nupkg... use:
-# Compress-PSResource -Path ./RWTodd.GWBasic -DestinationPath .
+# Compress-PSResource -Path ./RWTodd.GWBasic.PowerShell -DestinationPath .

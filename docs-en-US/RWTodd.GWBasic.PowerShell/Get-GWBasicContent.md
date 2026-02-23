@@ -2,7 +2,7 @@
 document type: cmdlet
 external help file: RWTodd.GWBasic.dll-Help.xml
 Locale: en-US
-Module Name: RWTodd.GWBasic
+Module Name: RWTodd.GWBasic.PowerShell
 ms.date: 02/21/2026
 PlatyPS schema version: 2024-05-01
 title: Get-GWBasicContent

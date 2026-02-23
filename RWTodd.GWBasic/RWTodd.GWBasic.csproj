@@ -8,6 +8,9 @@
   </PropertyGroup>
   <PropertyGroup>
     <AssemblyName>RWTodd.GWBasic</AssemblyName>
+    <PackageId Condition="'$(BuildForPowerShell)' == 'true'">RWTodd.GWBasic.PowerShell</PackageId>
+    <PackageId Condition="'$(BuildForPowerShell)' != 'true'">RWTodd.GWBasic</PackageId>
+    <Version>3.0.0</Version>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
