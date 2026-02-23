@@ -16,3 +16,5 @@ Copy-Item $PSScriptRoot/maml/RWTodd.GWBasic.PowerShell/*.xml $PSScriptRoot/RWTod
 
 # to create a nupkg... use:
 # Compress-PSResource -Path ./RWTodd.GWBasic.PowerShell -DestinationPath .
+# and for the c#:
+# dotnet pack ./RWTodd.GWBasic.csproj -c Release -o .
